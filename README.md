@@ -28,12 +28,17 @@ Honoring [`Game_23.swift`](https://github.com/gravity-wizard/twst23) and `Flippe
 
 ---
 
-## Pastel Colored Dice + Dark / Light / Spruce Modes
+## Pastel Colored Dice + Dark / Light / Spruce Modes + 3 Pace Speeds
 
 Cycle live in the top bar between:
 - **Obsidian Dark**: Matte-porcelain luminous pastel dice (*Coral Blush*, *Apricot Peach*, *Buttercream Gold*, *Mint Sage*, *Glacier Sky*, *Rose Quartz*) with deep espresso recessed pips over an obsidian-walnut tray.
 - **Birch Light**: Sunlit alabaster-linen tray with warm ceramic pastel dice and crisp elevation shadows.
 - **Spruce Wood**: Classic `akapps` `WoodGrain` dark spruce workshop table aesthetic.
+
+Switch pace anytime on the **`Rabbit 🐇` • `TurtLe 🐢` • `SnaiL 🐌`** Speed Bar:
+- **`Rabbit 🐇`**: Snappy `185ms` 3D tumbles, `170ms` match glow, `190ms` gravity cascades, and `1×` arcade Time Par.
+- **`TurtLe 🐢`** *(Default)*: Smooth `460ms` 3D tumbles, `480ms` match-glow preview before popping, `450ms` wave-by-wave gravity drops, and `2×` Time Par.
+- **`SnaiL 🐌`**: Zen `900ms` slow-motion Sum-7 cube inspection, `960ms` match glow, `880ms` cascades, and `4×` Zen Time Par.
 
 ---
 

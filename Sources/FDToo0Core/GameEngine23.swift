@@ -36,6 +36,101 @@ public struct MoveSnapshot: Sendable {
     public let bestChain: Int
 }
 
+public enum PaceSpeed: String, CaseIterable, Codable, Sendable, Identifiable {
+    case rabbit
+    case turtle
+    case snail
+
+    public var id: String { rawValue }
+
+    public var emoji: String {
+        switch self {
+        case .rabbit: return "🐇"
+        case .turtle: return "🐢"
+        case .snail:  return "🐌"
+        }
+    }
+
+    /// Honors Gary's capital-L signature styling (`TurtLe`, `SnaiL`)
+    public var stylizedLabel: String {
+        switch self {
+        case .rabbit: return "Rabbit 🐇"
+        case .turtle: return "TurtLe 🐢"
+        case .snail:  return "SnaiL 🐌"
+        }
+    }
+
+    public var tumbleDuration: Double {
+        switch self {
+        case .rabbit: return 0.185
+        case .turtle: return 0.460
+        case .snail:  return 0.900
+        }
+    }
+
+    public var glowDuration: Double {
+        switch self {
+        case .rabbit: return 0.170
+        case .turtle: return 0.480
+        case .snail:  return 0.960
+        }
+    }
+
+    public var dropDuration: Double {
+        switch self {
+        case .rabbit: return 0.190
+        case .turtle: return 0.450
+        case .snail:  return 0.880
+        }
+    }
+
+    public var springResponse: Double {
+        switch self {
+        case .rabbit: return 0.20
+        case .turtle: return 0.46
+        case .snail:  return 0.88
+        }
+    }
+
+    public var parTimeMultiplier: Double {
+        switch self {
+        case .rabbit: return 1.0
+        case .turtle: return 2.0
+        case .snail:  return 4.0
+        }
+    }
+
+    public var audioStretch: Double {
+        switch self {
+        case .rabbit: return 0.88
+        case .turtle: return 1.15
+        case .snail:  return 1.55
+        }
+    }
+
+    public var sparkleScale: Double {
+        switch self {
+        case .rabbit: return 0.85
+        case .turtle: return 1.25
+        case .snail:  return 1.85
+        }
+    }
+
+    public var summary: String {
+        switch self {
+        case .rabbit: return "Snappy 185ms tumbles & 1× arcade Time Par"
+        case .turtle: return "Smooth 460ms tumbles, match glow & 2× Time Par"
+        case .snail:  return "Slow-mo 900ms Sum-7 study & 4× Zen Time Par"
+        }
+    }
+}
+
+public struct CascadeWaveOutcome: Sendable {
+    public let clearedCount: Int
+    public let isChromaSurge: Bool
+    public let chainIndex: Int
+}
+
 @Observable
 public final class GameEngine23 {
     public private(set) var mode: FlipperGameMode = .fdToo0
@@ -56,10 +151,14 @@ public final class GameEngine23 {
     public private(set) var isWon: Bool = false
     public private(set) var lastBanner: String = "Swipe any die ↑ ↓ ← → to 90°-tumble (Opposite faces = 7)"
     public private(set) var activeHint: SuggestedHint? = nil
+    public var glowingMatchCoords: Set<GridCoord> = []
 
     public var selectedCoord: GridCoord? = nil
     public var twistArmed: Bool = false
     public var appearanceMode: BoardAppearanceMode = .dark
+    public var paceSpeed: PaceSpeed = .turtle {
+        didSet { saveProgress() }
+    }
 
     // Persistent progression
     public private(set) var unlockedFDToo0Level: Int = 1
@@ -108,6 +207,7 @@ public final class GameEngine23 {
         self.selectedCoord = nil
         self.twistArmed = false
         self.activeHint = nil
+        self.glowingMatchCoords.removeAll()
         self.h1moves.removeAll()
         self.spawnRNG = SplitMix64RNG(seed: bp.seedUsed ^ 0xCAFE_BABE_0023_0418)
 
@@ -139,11 +239,12 @@ public final class GameEngine23 {
         bestChain = snap.bestChain
         isWon = false
         activeHint = nil
+        glowingMatchCoords.removeAll()
         lastBanner = "Move undone (\(moves) moves)."
     }
 
     @discardableResult
-    public func applyTwist180(at coord: GridCoord) -> Bool {
+    public func beginTwist180Only(at coord: GridCoord) -> Bool {
         guard !isWon, twistCharges > 0,
               isInside(coord),
               var die = grid[coord.row][coord.col] else { return false }
@@ -151,6 +252,7 @@ public final class GameEngine23 {
         pushUndoSnapshot()
         twistCharges -= 1
         twistArmed = false
+        glowingMatchCoords.removeAll()
         moves += 1
         if die.isChained {
             die.isChained = false
@@ -160,10 +262,17 @@ public final class GameEngine23 {
         grid[coord.row][coord.col] = die
         lastBanner = "180° Twist! Top flipped to \(die.orientation.top) (Sum-7 pair)."
 
+        if mode == .classicFD {
+            evaluateClassicVictory()
+        }
+        return true
+    }
+
+    @discardableResult
+    public func applyTwist180(at coord: GridCoord) -> Bool {
+        guard beginTwist180Only(at: coord) else { return false }
         if mode == .fdToo0 {
             resolveFDToo0Cascades()
-        } else {
-            evaluateClassicVictory()
         }
         return true
     }
@@ -171,7 +280,7 @@ public final class GameEngine23 {
     // MARK: - Core 90° Tumble & Tumble-Swap Execution
 
     @discardableResult
-    public func swipeDie(at from: GridCoord, direction: TumbleDirection) -> Bool {
+    public func beginSwipeTumbleOnly(at from: GridCoord, direction: TumbleDirection) -> Bool {
         guard !isWon, isInside(from),
               var movingDie = grid[from.row][from.col] else { return false }
 
@@ -191,10 +300,13 @@ public final class GameEngine23 {
         pushUndoSnapshot()
         activeHint = nil
         selectedCoord = nil
+        glowingMatchCoords.removeAll()
+        currentChain = 0
         moves += 1
 
         // Perform 90-degree physical tip
         movingDie.orientation = movingDie.orientation.tipped(direction)
+        let landedPip = movingDie.orientation.top
 
         if var neighbor = grid[to.row][to.col] {
             neighbor.orientation = neighbor.orientation.tipped(direction.opposite)
@@ -216,112 +328,149 @@ public final class GameEngine23 {
             grid[exitCoord.row][exitCoord.col] = arrived
             grid[to.row][to.col] = nil
             lastBanner = "Warp Portal! Die tumbled across the ridge to (\(exitCoord.row + 1), \(exitCoord.col + 1))."
+        } else if mode == .fdToo0 {
+            lastBanner = "Tumbled \(direction.arrowGlyph) • Top face now Pip \(landedPip) (Bottom \(7 - landedPip))"
         }
 
         if mode == .classicFD {
             evaluateClassicVictory()
-        } else {
+        }
+        return true
+    }
+
+    @discardableResult
+    public func swipeDie(at from: GridCoord, direction: TumbleDirection) -> Bool {
+        guard beginSwipeTumbleOnly(at: from, direction: direction) else { return false }
+        if mode == .fdToo0 {
             resolveFDToo0Cascades()
         }
         return true
     }
 
-    // MARK: - Cascade & Chroma Resolution (`FD_too0`)
+    // MARK: - Multi-Phase Wave & Synchronous Cascade Resolution (`FD_too0`)
 
-    private func resolveFDToo0Cascades() {
-        var chainStep = 0
-        var totalPoppedThisTurn = 0
+    public func previewNextMatchWave() -> Set<GridCoord> {
+        guard mode == .fdToo0, !isWon else { return [] }
+        let groups = findThreePlusPipMatches(in: grid)
+        var all = Set<GridCoord>()
+        for g in groups {
+            for c in g { all.insert(c) }
+        }
+        return all
+    }
+
+    @discardableResult
+    public func commitSingleCascadeWave(waveIndex: Int) -> CascadeWaveOutcome? {
+        guard mode == .fdToo0, !isWon else { return nil }
+        let matchGroups = findThreePlusPipMatches(in: grid)
+        if matchGroups.isEmpty { return nil }
+
+        glowingMatchCoords.removeAll()
+        bestChain = max(bestChain, waveIndex)
+        currentChain = waveIndex
+
+        var coordsToClear = Set<GridCoord>()
+        var frostThawedCoords = Set<GridCoord>()
+        var padMultiplier = 1
         var triggeredChromaSurge = false
 
-        while true {
-            let matchGroups = findThreePlusPipMatches(in: grid)
-            if matchGroups.isEmpty { break }
+        for group in matchGroups {
+            let hues = Set(group.compactMap { grid[$0.row][$0.col]?.pastelHue })
+            if hues.count == 1 {
+                triggeredChromaSurge = true
+                padMultiplier = max(padMultiplier, 3)
+            }
 
-            chainStep += 1
-            bestChain = max(bestChain, chainStep)
-
-            var coordsToClear = Set<GridCoord>()
-            var frostThawedCoords = Set<GridCoord>()
-            var padMultiplier = 1
-
-            for group in matchGroups {
-                // Check if all dice in this 3+ run also share the SAME Pastel HSB body family -> Chroma Surge!
-                let hues = Set(group.compactMap { grid[$0.row][$0.col]?.pastelHue })
-                if hues.count == 1 {
-                    triggeredChromaSurge = true
-                    padMultiplier = max(padMultiplier, 3)
+            for coord in group {
+                if case .chromaMultiplier(let m) = blueprint.pads[coord.row][coord.col] {
+                    padMultiplier = max(padMultiplier, m)
                 }
-
-                for coord in group {
-                    if case .chromaMultiplier(let m) = blueprint.pads[coord.row][coord.col] {
-                        padMultiplier = max(padMultiplier, m)
-                    }
-                    if let d = grid[coord.row][coord.col], d.frostLayers > 0 {
-                        frostThawedCoords.insert(coord)
-                    } else {
-                        coordsToClear.insert(coord)
-                    }
+                if let d = grid[coord.row][coord.col], d.frostLayers > 0 {
+                    frostThawedCoords.insert(coord)
+                } else {
+                    coordsToClear.insert(coord)
                 }
             }
-
-            // Free any Chained dice or Frost adjacent to cleared coordinates
-            let allAffected = coordsToClear.union(frostThawedCoords)
-            for coord in allAffected {
-                for dir in TumbleDirection.allCases {
-                    let adj = GridCoord(coord.row + dir.rowDelta, coord.col + dir.colDelta)
-                    guard isInside(adj), var adjDie = grid[adj.row][adj.col] else { continue }
-                    if adjDie.isChained {
-                        adjDie.isChained = false
-                        grid[adj.row][adj.col] = adjDie
-                        chainsFreed += 1
-                    }
-                }
-            }
-
-            for coord in frostThawedCoords {
-                if var d = grid[coord.row][coord.col] {
-                    d.frostLayers = max(0, d.frostLayers - 1)
-                    grid[coord.row][coord.col] = d
-                    frostCleared += 1
-                }
-            }
-
-            for coord in coordsToClear {
-                grid[coord.row][coord.col] = nil
-            }
-
-            let clearedNow = coordsToClear.count + frostThawedCoords.count
-            totalPoppedThisTurn += coordsToClear.count
-            diceCleared += coordsToClear.count
-            score += clearedNow * 100 * chainStep * padMultiplier
-
-            if triggeredChromaSurge && chainStep == 1 {
-                twistCharges = min(5, twistCharges + 1)
-            }
-
-            applyGravityAndRefill()
         }
 
-        currentChain = chainStep
-        if chainStep > 0 {
-            let surgeNote = triggeredChromaSurge ? " ✦ PASTEL CHROMA SURGE (+1 Twist)!" : ""
-            let chainNote = chainStep > 1 ? " • Chain ×\(chainStep)!" : ""
-            lastBanner = "Cleared \(totalPoppedThisTurn) dice\(chainNote)\(surgeNote)"
+        let allAffected = coordsToClear.union(frostThawedCoords)
+        for coord in allAffected {
+            for dir in TumbleDirection.allCases {
+                let adj = GridCoord(coord.row + dir.rowDelta, coord.col + dir.colDelta)
+                guard isInside(adj), var adjDie = grid[adj.row][adj.col] else { continue }
+                if adjDie.isChained {
+                    adjDie.isChained = false
+                    grid[adj.row][adj.col] = adjDie
+                    chainsFreed += 1
+                }
+            }
         }
 
-        // Check stage win goals
+        for coord in frostThawedCoords {
+            if var d = grid[coord.row][coord.col] {
+                d.frostLayers = max(0, d.frostLayers - 1)
+                grid[coord.row][coord.col] = d
+                frostCleared += 1
+            }
+        }
+
+        for coord in coordsToClear {
+            grid[coord.row][coord.col] = nil
+        }
+
+        let clearedNow = coordsToClear.count + frostThawedCoords.count
+        diceCleared += coordsToClear.count
+        score += clearedNow * 100 * waveIndex * padMultiplier
+
+        if triggeredChromaSurge && waveIndex == 1 {
+            twistCharges = min(5, twistCharges + 1)
+        }
+
+        applyGravityAndRefill()
+
+        let surgeNote = triggeredChromaSurge ? " ✦ PASTEL CHROMA SURGE (+1 Twist)!" : ""
+        let chainNote = waveIndex > 1 ? " • Chain ×\(waveIndex)!" : ""
+        lastBanner = "Cleared \(coordsToClear.count) dice\(chainNote)\(surgeNote)"
+
         if diceCleared >= blueprint.targetDiceCleared
             && frostCleared >= blueprint.targetFrostCleared
             && chainsFreed >= blueprint.targetChainsFreed {
             completeStageWin()
-            return
         }
 
-        // Live anti-deadlock guardian: if no 1-swipe match exists, harmonize one pair subtly or grant a Twist charge
+        return CascadeWaveOutcome(
+            clearedCount: coordsToClear.count,
+            isChromaSurge: triggeredChromaSurge,
+            chainIndex: waveIndex
+        )
+    }
+
+    public func finalizeTurnAfterWaves() {
+        glowingMatchCoords.removeAll()
+        guard mode == .fdToo0, !isWon else { return }
         if computeBestHint() == nil && twistCharges == 0 {
             twistCharges = 1
             lastBanner = "Gravitorium Resonance granted +1 Twist Charge (180° flip)!"
         }
+    }
+
+    private func resolveFDToo0Cascades() {
+        var wave = 1
+        var totalPoppedThisTurn = 0
+        var anyChroma = false
+        while !isWon && wave <= 20 {
+            guard let outcome = commitSingleCascadeWave(waveIndex: wave) else { break }
+            totalPoppedThisTurn += outcome.clearedCount
+            if outcome.isChromaSurge { anyChroma = true }
+            wave += 1
+        }
+        if !isWon && wave > 1 {
+            let chainCount = wave - 1
+            let surgeNote = anyChroma ? " ✦ PASTEL CHROMA SURGE (+1 Twist)!" : ""
+            let chainNote = chainCount > 1 ? " • Chain ×\(chainCount)!" : ""
+            lastBanner = "Cleared \(totalPoppedThisTurn) dice\(chainNote)\(surgeNote)"
+        }
+        finalizeTurnAfterWaves()
     }
 
     private func applyGravityAndRefill() {
@@ -406,8 +555,12 @@ public final class GameEngine23 {
         lastBanner = "Stage #\(currentLevel) Cleared! \(String(repeating: "★", count: stars)) (\(moves) moves, \(elapsedSeconds)s)"
     }
 
+    public var effectiveParSeconds: Int {
+        Int((Double(blueprint.parSeconds) * paceSpeed.parTimeMultiplier).rounded())
+    }
+
     public var earnedStars: Int {
-        if moves <= blueprint.parMoves && elapsedSeconds <= blueprint.parSeconds {
+        if moves <= blueprint.parMoves && elapsedSeconds <= effectiveParSeconds {
             return 3
         } else if moves <= Int(Double(blueprint.parMoves) * 1.45) {
             return 2
@@ -568,6 +721,7 @@ public final class GameEngine23 {
     private func saveProgress() {
         let defaults = UserDefaults.standard
         defaults.set(unlockedFDToo0Level, forKey: "gw.fdtoo0.unlockedLevel")
+        defaults.set(paceSpeed.rawValue, forKey: "gw.fdtoo0.speed")
         if let data = try? JSONEncoder().encode(starsByLevel) {
             defaults.set(data, forKey: "gw.fdtoo0.starsByLevel")
         }
@@ -577,6 +731,10 @@ public final class GameEngine23 {
         let defaults = UserDefaults.standard
         let savedUnlocked = defaults.integer(forKey: "gw.fdtoo0.unlockedLevel")
         if savedUnlocked >= 1 { unlockedFDToo0Level = savedUnlocked }
+        if let rawSpeed = defaults.string(forKey: "gw.fdtoo0.speed"),
+           let parsedSpeed = PaceSpeed(rawValue: rawSpeed) {
+            paceSpeed = parsedSpeed
+        }
         if let data = defaults.data(forKey: "gw.fdtoo0.starsByLevel"),
            let decoded = try? JSONDecoder().decode([Int: Int].self, from: data) {
             starsByLevel = decoded

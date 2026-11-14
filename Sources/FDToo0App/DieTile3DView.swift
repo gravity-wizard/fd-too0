@@ -13,6 +13,8 @@ public struct DieTile3DView: View {
     public let die: BoardDie
     public let appearance: BoardAppearanceMode
     public let isSelected: Bool
+    public let isMatchGlowing: Bool
+    public let springResponse: Double
     public let hintDirection: TumbleDirection?
     public let lastTipDirection: TumbleDirection?
 
@@ -20,12 +22,16 @@ public struct DieTile3DView: View {
         die: BoardDie,
         appearance: BoardAppearanceMode,
         isSelected: Bool,
+        isMatchGlowing: Bool = false,
+        springResponse: Double = 0.46,
         hintDirection: TumbleDirection?,
         lastTipDirection: TumbleDirection?
     ) {
         self.die = die
         self.appearance = appearance
         self.isSelected = isSelected
+        self.isMatchGlowing = isMatchGlowing
+        self.springResponse = springResponse
         self.hintDirection = hintDirection
         self.lastTipDirection = lastTipDirection
     }
@@ -60,8 +66,10 @@ public struct DieTile3DView: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: corner, style: .continuous)
                             .strokeBorder(
-                                isSelected ? Color.yellow.opacity(0.95) : bevelColor.opacity(0.85),
-                                lineWidth: isSelected ? 2.8 : 1.4
+                                isMatchGlowing
+                                    ? Color(red: 0.99, green: 0.89, blue: 0.52)
+                                    : (isSelected ? Color.yellow.opacity(0.95) : bevelColor.opacity(0.85)),
+                                lineWidth: isMatchGlowing ? 3.2 : (isSelected ? 2.8 : 1.4)
                             )
                     )
 
@@ -111,8 +119,9 @@ public struct DieTile3DView: View {
                 axis: rotationAxis(for: lastTipDirection),
                 perspective: 0.55
             )
-            .scaleEffect(isSelected ? 1.04 : 1.0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.72), value: die.orientation)
+            .scaleEffect(isMatchGlowing ? 1.07 : (isSelected ? 1.04 : 1.0))
+            .animation(.spring(response: springResponse, dampingFraction: 0.74), value: die.orientation)
+            .animation(.easeInOut(duration: 0.18), value: isMatchGlowing)
             .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isSelected)
         }
         .aspectRatio(1, contentMode: .fit)

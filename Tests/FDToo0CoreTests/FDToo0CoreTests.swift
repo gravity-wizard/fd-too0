@@ -45,4 +45,40 @@ final class FDToo0CoreTests: XCTestCase {
             XCTAssertTrue(allDice.allSatisfy { $0.orientation.hasValidSumSevenInvariant })
         }
     }
+
+    func testPaceSpeedsAndMultiPhaseWaveChoreography() {
+        let syncEngine = GameEngine23(initialMode: .fdToo0, startLevel: 1)
+        let phasedEngine = GameEngine23(initialMode: .fdToo0, startLevel: 1)
+
+        syncEngine.paceSpeed = .rabbit
+        XCTAssertEqual(syncEngine.paceSpeed.stylizedLabel, "Rabbit 🐇")
+        let rabbitPar = syncEngine.effectiveParSeconds
+
+        syncEngine.paceSpeed = .turtle
+        XCTAssertEqual(syncEngine.paceSpeed.stylizedLabel, "TurtLe 🐢")
+        XCTAssertEqual(syncEngine.effectiveParSeconds, rabbitPar * 2)
+
+        syncEngine.paceSpeed = .snail
+        XCTAssertEqual(syncEngine.paceSpeed.stylizedLabel, "SnaiL 🐌")
+        XCTAssertEqual(syncEngine.effectiveParSeconds, rabbitPar * 4)
+
+        guard let hint = syncEngine.computeBestHint() else {
+            XCTFail("Expected opening hint on level 1")
+            return
+        }
+
+        XCTAssertTrue(syncEngine.swipeDie(at: hint.from, direction: hint.direction))
+        XCTAssertTrue(phasedEngine.beginSwipeTumbleOnly(at: hint.from, direction: hint.direction))
+        XCTAssertFalse(phasedEngine.previewNextMatchWave().isEmpty)
+
+        var wave = 1
+        while !phasedEngine.previewNextMatchWave().isEmpty && wave <= 20 {
+            _ = phasedEngine.commitSingleCascadeWave(waveIndex: wave)
+            wave += 1
+        }
+        phasedEngine.finalizeTurnAfterWaves()
+
+        XCTAssertEqual(phasedEngine.score, syncEngine.score)
+        XCTAssertEqual(phasedEngine.diceCleared, syncEngine.diceCleared)
+    }
 }

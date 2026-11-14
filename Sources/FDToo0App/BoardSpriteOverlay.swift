@@ -14,7 +14,12 @@ public final class CascadeSparkleScene: SKScene {
         scaleMode = .resizeFill
     }
 
-    public func emitBurst(normalizedX: CGFloat = 0.5, normalizedY: CGFloat = 0.5, count: Int = 18) {
+    public func emitBurst(
+        normalizedX: CGFloat = 0.5,
+        normalizedY: CGFloat = 0.5,
+        count: Int = 18,
+        durationScale: Double = 1.0
+    ) {
         let origin = CGPoint(x: size.width * normalizedX, y: size.height * normalizedY)
         let palette: [SKColor] = [
             SKColor(red: 0.96, green: 0.72, blue: 0.68, alpha: 1.0),
@@ -23,6 +28,7 @@ public final class CascadeSparkleScene: SKScene {
             SKColor(red: 0.69, green: 0.85, blue: 0.95, alpha: 1.0)
         ]
 
+        let dur = 0.52 * max(0.5, durationScale)
         for idx in 0..<count {
             let spark = SKShapeNode(circleOfRadius: CGFloat.random(in: 3.5...6.5))
             spark.fillColor = palette[idx % palette.count]
@@ -35,10 +41,10 @@ public final class CascadeSparkleScene: SKScene {
             let dx = cos(angle) * distance
             let dy = sin(angle) * distance
 
-            let move = SKAction.moveBy(x: dx, y: dy, duration: 0.52)
+            let move = SKAction.moveBy(x: dx, y: dy, duration: dur)
             move.timingMode = .easeOut
-            let fade = SKAction.fadeOut(withDuration: 0.52)
-            let scale = SKAction.scale(to: 0.2, duration: 0.52)
+            let fade = SKAction.fadeOut(withDuration: dur)
+            let scale = SKAction.scale(to: 0.2, duration: dur)
             spark.run(.sequence([.group([move, fade, scale]), .removeFromParent()]))
         }
     }

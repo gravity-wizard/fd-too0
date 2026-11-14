@@ -38,29 +38,29 @@ public final class TactileAudioHaptics {
         }
     }
 
-    public func playTumble(pip: Int) {
+    public func playTumble(pip: Int, audioStretch: Double = 1.0) {
         triggerHaptic(intensity: 0.55)
         guard soundEnabled else { return }
-        // Warm wooden marimba clack scaled gently by pip (1..6)
+        // Warm wooden marimba clack scaled gently by pip (1..6) and PaceSpeed
         let pentatonic: [Double] = [293.66, 329.63, 392.00, 440.00, 523.25, 587.33]
         let freq = pentatonic[max(0, min(5, pip - 1))]
-        synthesizeTone(frequency: freq, duration: 0.085, harmonicRatio: 2.75, amplitude: 0.24)
+        synthesizeTone(frequency: freq, duration: 0.085 * audioStretch, harmonicRatio: 2.75, amplitude: 0.24)
     }
 
-    public func playCascadeMatch(chain: Int, isChromaSurge: Bool) {
+    public func playCascadeMatch(chain: Int, isChromaSurge: Bool, audioStretch: Double = 1.0) {
         triggerHaptic(intensity: isChromaSurge ? 1.0 : 0.8)
         guard soundEnabled else { return }
         let baseFreq = 440.0 * pow(1.12246, Double(min(chain, 8)))
-        synthesizeTone(frequency: baseFreq, duration: 0.18, harmonicRatio: 2.0, amplitude: 0.30)
+        synthesizeTone(frequency: baseFreq, duration: 0.18 * audioStretch, harmonicRatio: 2.0, amplitude: 0.30)
         if isChromaSurge {
-            synthesizeTone(frequency: baseFreq * 1.5, duration: 0.24, harmonicRatio: 3.0, amplitude: 0.22)
+            synthesizeTone(frequency: baseFreq * 1.5, duration: 0.24 * audioStretch, harmonicRatio: 3.0, amplitude: 0.22)
         }
     }
 
-    public func playStageWin() {
+    public func playStageWin(audioStretch: Double = 1.0) {
         triggerHaptic(intensity: 1.0)
         guard soundEnabled else { return }
-        synthesizeTone(frequency: 523.25, duration: 0.28, harmonicRatio: 2.0, amplitude: 0.30)
+        synthesizeTone(frequency: 523.25, duration: 0.28 * audioStretch, harmonicRatio: 2.0, amplitude: 0.30)
     }
 
     private func triggerHaptic(intensity: Double) {

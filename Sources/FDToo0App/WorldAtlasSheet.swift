@@ -118,6 +118,11 @@ public struct RulesInspectorSheet: View {
                         Text("Align 3+ matching top pips in a row or column to pop & cascade! Matching 3+ dice of the SAME Pastel HSB Color triggers a ×3 Pastel Chroma Surge and awards +1 180° Twist Charge. Conquer Chroma Pads, Frosted Ice, Chained Dice, Twist180 Launchers, and Paired Warp Portals all the way to Boss #1,023!")
                             .font(.subheadline)
                     }
+
+                    GroupBox("4. Rabbit 🐇 • TurtLe 🐢 • SnaiL 🐌 Speeds") {
+                        Text("Pick your pace anytime in the Speed Bar: Rabbit 🐇 (snappy 185ms tumbles & 1× arcade Time Par), TurtLe 🐢 (default 460ms tumbles, glowing 3+ match preview & 2× Time Par), or SnaiL 🐌 (slow-mo 900ms Sum-7 study & 4× Zen Time Par).")
+                            .font(.subheadline)
+                    }
                 }
                 .padding()
             }

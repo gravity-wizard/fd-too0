@@ -16,6 +16,8 @@ public struct FDToo0RootView: View {
     @State private var showAtlas = false
     @State private var showRules = false
     @State private var lastTipDir: TumbleDirection? = nil
+    @State private var choreographyTask: Task<Void, Never>? = nil
+    @State private var isChoreographing: Bool = false
 
     private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
@@ -45,8 +47,9 @@ public struct FDToo0RootView: View {
         ZStack {
             windowBackground.ignoresSafeArea()
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 headerFlipperBar
+                paceSpeedBar
                 scoreSlatStrip
                 boardTrayView
                 selectedDieCompassHUD
@@ -78,8 +81,9 @@ public struct FDToo0RootView: View {
     private var headerFlipperBar: some View {
         HStack(spacing: 10) {
             Button {
+                cancelChoreography()
                 engine.toggleFlipper()
-                TactileAudioHaptics.shared.playTumble(pip: 6)
+                TactileAudioHaptics.shared.playTumble(pip: 6, audioStretch: engine.paceSpeed.audioStretch)
             } label: {
                 HStack(spacing: 6) {
                     Text("⇄")
@@ -98,6 +102,7 @@ public struct FDToo0RootView: View {
             .buttonStyle(.plain)
 
             Button {
+                cancelChoreography()
                 showAtlas = true
             } label: {
                 VStack(alignment: .leading, spacing: 1) {
@@ -138,6 +143,44 @@ public struct FDToo0RootView: View {
         }
     }
 
+    // MARK: - Rabbit 🐇 • TurtLe 🐢 • SnaiL 🐌 Pace Speed Bar
+
+    private var paceSpeedBar: some View {
+        HStack(spacing: 6) {
+            ForEach(PaceSpeed.allCases) { speed in
+                let active = engine.paceSpeed == speed
+                Button {
+                    engine.paceSpeed = speed
+                    TactileAudioHaptics.shared.playTumble(
+                        pip: speed == .rabbit ? 6 : (speed == .turtle ? 4 : 2),
+                        audioStretch: speed.audioStretch
+                    )
+                } label: {
+                    Text(speed.stylizedLabel)
+                        .font(.caption.weight(active ? .heavy : .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    active
+                                        ? Color(red: 0.35, green: 0.62, blue: 0.52)
+                                        : primaryInk.opacity(0.06)
+                                )
+                        )
+                        .foregroundStyle(active ? Color.white : primaryInk.opacity(0.82))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            Capsule()
+                .fill(trayBackground)
+                .overlay(Capsule().strokeBorder(primaryInk.opacity(0.12), lineWidth: 1))
+        )
+    }
+
     // MARK: - ScoreSlat Telemetry Strip (Game_23.swift Heritage)
 
     private var scoreSlatStrip: some View {
@@ -150,7 +193,10 @@ public struct FDToo0RootView: View {
                         : "Pip \(engine.blueprint.targetHarmonyPip ?? 6)"
                 )
                 statPill(label: "MOVES / PAR", value: "\(engine.moves)/\(engine.blueprint.parMoves)")
-                statPill(label: "TIME / PAR", value: "\(engine.elapsedSeconds)s/\(engine.blueprint.parSeconds)s")
+                statPill(
+                    label: "TIME / \(engine.paceSpeed.emoji) PAR",
+                    value: "\(engine.elapsedSeconds)s/\(engine.effectiveParSeconds)s"
+                )
                 statPill(label: "SCORE", value: "\(engine.score)")
             }
 
@@ -232,12 +278,15 @@ public struct FDToo0RootView: View {
                         die: die,
                         appearance: engine.appearanceMode,
                         isSelected: engine.selectedCoord == coord,
+                        isMatchGlowing: engine.glowingMatchCoords.contains(coord),
+                        springResponse: engine.paceSpeed.springResponse,
                         hintDirection: hintDir,
                         lastTipDirection: lastTipDir
                     )
                     .gesture(
                         DragGesture(minimumDistance: 14)
                             .onEnded { value in
+                                guard !isChoreographing else { return }
                                 let dx = value.translation.width
                                 let dy = value.translation.height
                                 let dir: TumbleDirection = abs(dx) > abs(dy)
@@ -247,12 +296,14 @@ public struct FDToo0RootView: View {
                             }
                     )
                     .onTapGesture {
+                        guard !isChoreographing else { return }
                         handleTap(on: coord)
                     }
                 } else {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            guard !isChoreographing else { return }
                             handleTap(on: coord)
                         }
                 }
@@ -299,9 +350,9 @@ public struct FDToo0RootView: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(trayBackground))
                 .foregroundStyle(primaryInk)
             } else {
-                Text("Tip: Swipe any die ↑ ↓ ← →, or tap a die to inspect all 6 Sum-7 faces!")
+                Text(engine.paceSpeed.summary)
                     .font(.caption2)
-                    .foregroundStyle(primaryInk.opacity(0.62))
+                    .foregroundStyle(primaryInk.opacity(0.66))
                     .padding(.vertical, 4)
             }
         }
@@ -312,13 +363,14 @@ public struct FDToo0RootView: View {
     private var bottomControlDeck: some View {
         HStack(spacing: 10) {
             Button {
+                cancelChoreography()
                 engine.undoLastMove()
             } label: {
                 Label("Undo", systemImage: "arrow.uturn.backward")
                     .font(.caption.weight(.bold))
             }
             .buttonStyle(.bordered)
-            .disabled(!engine.canUndo)
+            .disabled(!engine.canUndo || isChoreographing)
 
             Button {
                 engine.twistArmed.toggle()
@@ -328,7 +380,7 @@ public struct FDToo0RootView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(engine.twistArmed ? .orange : .teal)
-            .disabled(engine.twistCharges == 0)
+            .disabled(engine.twistCharges == 0 || isChoreographing)
 
             Button {
                 _ = engine.requestHint()
@@ -337,8 +389,10 @@ public struct FDToo0RootView: View {
                     .font(.caption.weight(.bold))
             }
             .buttonStyle(.bordered)
+            .disabled(isChoreographing)
 
             Button {
+                cancelChoreography()
                 engine.load(level: engine.currentLevel)
             } label: {
                 Label("Replay", systemImage: "arrow.clockwise")
@@ -361,17 +415,20 @@ public struct FDToo0RootView: View {
                 Text("Level #\(engine.currentLevel) Complete!")
                     .font(.title2.weight(.heavy))
 
-                Text("Moves: \(engine.moves) (Par \(engine.blueprint.parMoves)) • Score: \(engine.score)")
+                Text("Moves: \(engine.moves) (Par \(engine.blueprint.parMoves)) • Time: \(engine.elapsedSeconds)s (\(engine.paceSpeed.emoji) Par \(engine.effectiveParSeconds)s)")
                     .font(.subheadline)
                     .opacity(0.85)
+                    .multilineTextAlignment(.center)
 
                 HStack(spacing: 12) {
                     Button("Replay") {
+                        cancelChoreography()
                         engine.load(level: engine.currentLevel)
                     }
                     .buttonStyle(.bordered)
 
                     Button("Next Level #\(min(1023, engine.currentLevel + 1)) →") {
+                        cancelChoreography()
                         engine.load(level: min(1023, engine.currentLevel + 1))
                     }
                     .buttonStyle(.borderedProminent)
@@ -384,13 +441,25 @@ public struct FDToo0RootView: View {
         }
     }
 
-    // MARK: - Interaction Handlers
+    // MARK: - Interaction & Multi-Phase Speed Choreography
+
+    private func cancelChoreography() {
+        choreographyTask?.cancel()
+        choreographyTask = nil
+        isChoreographing = false
+        engine.glowingMatchCoords.removeAll()
+    }
 
     private func handleTap(on coord: GridCoord) {
         if engine.twistArmed {
-            if engine.applyTwist180(at: coord) {
-                TactileAudioHaptics.shared.playCascadeMatch(chain: 1, isChromaSurge: true)
-                sparkleScene.emitBurst()
+            let speed = engine.paceSpeed
+            let didTwist = withAnimation(.spring(response: speed.springResponse, dampingFraction: 0.74)) {
+                engine.beginTwist180Only(at: coord)
+            }
+            if didTwist {
+                let topPip = engine.grid[coord.row][coord.col]?.orientation.top ?? 6
+                TactileAudioHaptics.shared.playTumble(pip: topPip, audioStretch: speed.audioStretch)
+                runWaveChoreography()
             }
             return
         }
@@ -414,20 +483,85 @@ public struct FDToo0RootView: View {
     }
 
     private func performSwipe(from coord: GridCoord, direction: TumbleDirection) {
-        let prevCleared = engine.diceCleared
         lastTipDir = direction
-        if engine.swipeDie(at: coord, direction: direction) {
-            let delta = engine.diceCleared - prevCleared
-            if engine.isWon {
-                TactileAudioHaptics.shared.playStageWin()
-                sparkleScene.emitBurst(count: 28)
-            } else if delta > 0 {
-                TactileAudioHaptics.shared.playCascadeMatch(chain: max(1, engine.currentChain), isChromaSurge: engine.lastBanner.contains("CHROMA"))
-                sparkleScene.emitBurst(count: 18)
-            } else {
-                let topPip = engine.grid[coord.row + direction.rowDelta][coord.col + direction.colDelta]?.orientation.top ?? 4
-                TactileAudioHaptics.shared.playTumble(pip: topPip)
+        let speed = engine.paceSpeed
+        let moved = withAnimation(.spring(response: speed.springResponse, dampingFraction: 0.74)) {
+            engine.beginSwipeTumbleOnly(at: coord, direction: direction)
+        }
+        guard moved else { return }
+
+        let destRow = coord.row + direction.rowDelta
+        let destCol = coord.col + direction.colDelta
+        let landedPip = (destRow >= 0 && destRow < engine.blueprint.rows && destCol >= 0 && destCol < engine.blueprint.cols)
+            ? (engine.grid[destRow][destCol]?.orientation.top ?? 4)
+            : 4
+        TactileAudioHaptics.shared.playTumble(pip: landedPip, audioStretch: speed.audioStretch)
+
+        if engine.isWon {
+            TactileAudioHaptics.shared.playStageWin(audioStretch: speed.audioStretch)
+            sparkleScene.emitBurst(count: 28, durationScale: speed.sparkleScale)
+            return
+        }
+
+        runWaveChoreography()
+    }
+
+    private func runWaveChoreography() {
+        guard engine.mode == .fdToo0 else { return }
+        choreographyTask?.cancel()
+        isChoreographing = true
+
+        choreographyTask = Task { @MainActor in
+            defer {
+                isChoreographing = false
             }
+
+            // Phase 1: Let the 90° 3D tumble land visually at the chosen Rabbit / TurtLe / SnaiL pace
+            let initialTumbleNs = UInt64(engine.paceSpeed.tumbleDuration * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: initialTumbleNs)
+            if Task.isCancelled { return }
+
+            var wave = 1
+            while !engine.isWon && wave <= 20 {
+                let preview = engine.previewNextMatchWave()
+                if preview.isEmpty { break }
+
+                // Phase 2: Highlight the 3+ matching top-pip run before popping
+                engine.glowingMatchCoords = preview
+                let glowNs = UInt64(engine.paceSpeed.glowDuration * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: glowNs)
+                if Task.isCancelled { return }
+
+                // Phase 3: Pop matched dice & drop fresh Pastel HSB gravity cascade
+                let speed = engine.paceSpeed
+                let outcome = withAnimation(.spring(response: speed.dropDuration, dampingFraction: 0.78)) {
+                    engine.commitSingleCascadeWave(waveIndex: wave)
+                }
+                if let outcome {
+                    if engine.isWon {
+                        TactileAudioHaptics.shared.playStageWin(audioStretch: speed.audioStretch)
+                        sparkleScene.emitBurst(count: 28, durationScale: speed.sparkleScale)
+                        break
+                    } else {
+                        TactileAudioHaptics.shared.playCascadeMatch(
+                            chain: outcome.chainIndex,
+                            isChromaSurge: outcome.isChromaSurge,
+                            audioStretch: speed.audioStretch
+                        )
+                        sparkleScene.emitBurst(
+                            count: outcome.isChromaSurge ? 24 : 16,
+                            durationScale: speed.sparkleScale
+                        )
+                    }
+                }
+
+                let dropNs = UInt64(engine.paceSpeed.dropDuration * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: dropNs)
+                if Task.isCancelled { return }
+                wave += 1
+            }
+
+            engine.finalizeTurnAfterWaves()
         }
     }
 }
