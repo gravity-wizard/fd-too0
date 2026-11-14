@@ -511,29 +511,86 @@ public enum LevelSeedEngine {
                 let preTipOrient = DieOrientation.canonical(topPip: neededBeforePad, yawSteps: 0).tipped(.south)
                 dBelow.orientation = preTipOrient
 
-                // Ensure grid[r][c+2] doesn't already show targetP on turn 0 (nor portal away)
+                // Ensure neither (r, c+2) nor (r+1, c+2) is a portal
                 if case .portal = pads[r][c + 2] { continue }
-                if var d2 = grid[r][c + 2], d2.orientation.top == targetP {
-                    d2.orientation = DieOrientation.canonical(topPip: (targetP % 6) + 1, yawSteps: 0)
-                    grid[r][c + 2] = d2
-                }
-
-                // Prevent accidental vertical 3-match beneath (r, c) or (r, c+1) on turn 0
-                for checkCol in [c, c + 1] {
-                    if r + 2 < rows,
-                       let b1 = grid[r + 1][checkCol],
-                       var b2 = grid[r + 2][checkCol],
-                       b1.orientation.top == targetP && b2.orientation.top == targetP {
-                        b2.orientation = DieOrientation.canonical(topPip: (targetP % 6) + 1, yawSteps: 2)
-                        grid[r + 2][checkCol] = b2
-                    }
-                }
+                if case .portal = pads[r + 1][c + 2] { continue }
 
                 grid[r][c] = d0
                 grid[r][c + 1] = d1
                 grid[r + 1][c + 2] = dBelow
+
+                let protectedSet: Set<String> = ["\(r),\(c)", "\(r),\(c + 1)", "\(r + 1),\(c + 2)"]
+
+                if var d2 = grid[r][c + 2], d2.orientation.top == targetP {
+                    let safe = pickNonMatchingPip(in: grid, rows: rows, cols: cols, r: r, c: c + 2, extraForbidden: targetP)
+                    d2.orientation = DieOrientation.canonical(topPip: safe, yawSteps: 0)
+                    grid[r][c + 2] = d2
+                }
+
+                // Pigeonhole Principle scrubber: breaks any accidental turn-0 3+ match without touching protectedSet
+                for _ in 0..<12 {
+                    let matches = scanThreePlusMatches(in: grid, rows: rows, cols: cols)
+                    if matches.isEmpty { break }
+                    for group in matches {
+                        if let mutable = group.first(where: { !protectedSet.contains("\($0.0),\($0.1)") }),
+                           var cellDie = grid[mutable.0][mutable.1] {
+                            let extra = (mutable.0 == r && mutable.1 == c + 2) ? targetP : -1
+                            let safe = pickNonMatchingPip(in: grid, rows: rows, cols: cols, r: mutable.0, c: mutable.1, extraForbidden: extra)
+                            cellDie.orientation = DieOrientation.canonical(topPip: safe, yawSteps: 0)
+                            grid[mutable.0][mutable.1] = cellDie
+                        }
+                    }
+                }
                 return
             }
         }
+    }
+
+    private static func pickNonMatchingPip(
+        in grid: [[BoardDie?]],
+        rows: Int,
+        cols: Int,
+        r: Int,
+        c: Int,
+        extraForbidden: Int
+    ) -> Int {
+        var forbidden = Set<Int>()
+        if extraForbidden >= 1 { forbidden.insert(extraForbidden) }
+        if r > 0, let n = grid[r - 1][c] { forbidden.insert(n.orientation.top) }
+        if r + 1 < rows, let s = grid[r + 1][c] { forbidden.insert(s.orientation.top) }
+        if c > 0, let w = grid[r][c - 1] { forbidden.insert(w.orientation.top) }
+        if c + 1 < cols, let e = grid[r][c + 1] { forbidden.insert(e.orientation.top) }
+        return (1...6).first(where: { !forbidden.contains($0) }) ?? 1
+    }
+
+    private static func scanThreePlusMatches(in grid: [[BoardDie?]], rows: Int, cols: Int) -> [[(Int, Int)]] {
+        var out: [[(Int, Int)]] = []
+        for r in 0..<rows {
+            var c = 0
+            while c < cols {
+                guard let d = grid[r][c] else { c += 1; continue }
+                var run = [(r, c)]
+                var k = c + 1
+                while k < cols, let nx = grid[r][k], nx.orientation.top == d.orientation.top {
+                    run.append((r, k)); k += 1
+                }
+                if run.count >= 3 { out.append(run) }
+                c = k
+            }
+        }
+        for c in 0..<cols {
+            var r = 0
+            while r < rows {
+                guard let d = grid[r][c] else { r += 1; continue }
+                var run = [(r, c)]
+                var k = r + 1
+                while k < rows, let nx = grid[k][c], nx.orientation.top == d.orientation.top {
+                    run.append((k, c)); k += 1
+                }
+                if run.count >= 3 { out.append(run) }
+                r = k
+            }
+        }
+        return out
     }
 }
