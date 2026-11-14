@@ -15,7 +15,8 @@ public struct FDToo0RootView: View {
     @State private var sparkleScene = CascadeSparkleScene(size: CGSize(width: 420, height: 420))
     @State private var showAtlas = false
     @State private var showRules = false
-    @State private var lastTipDir: TumbleDirection? = nil
+    @State private var rollDirByCoord: [GridCoord: TumbleDirection] = [:]
+    @State private var rollTriggerSeq: Int = 0
     @State private var choreographyTask: Task<Void, Never>? = nil
     @State private var isChoreographing: Bool = false
 
@@ -274,6 +275,7 @@ public struct FDToo0RootView: View {
 
                 if let die = engine.grid[row][col] {
                     let hintDir = (engine.activeHint?.from == coord) ? engine.activeHint?.direction : nil
+                    let rollDir = rollDirByCoord[coord]
                     DieTile3DView(
                         die: die,
                         appearance: engine.appearanceMode,
@@ -281,7 +283,8 @@ public struct FDToo0RootView: View {
                         isMatchGlowing: engine.glowingMatchCoords.contains(coord),
                         springResponse: engine.paceSpeed.springResponse,
                         hintDirection: hintDir,
-                        lastTipDirection: lastTipDir
+                        lastTipDirection: rollDir,
+                        rollTriggerID: rollDir != nil ? rollTriggerSeq : 0
                     )
                     .gesture(
                         DragGesture(minimumDistance: 14)
@@ -309,6 +312,7 @@ public struct FDToo0RootView: View {
                 }
             }
             .aspectRatio(1, contentMode: .fit)
+            .zIndex(rollDirByCoord[coord] != nil ? 12 : 1)
         }
     }
 
@@ -447,16 +451,17 @@ public struct FDToo0RootView: View {
         choreographyTask?.cancel()
         choreographyTask = nil
         isChoreographing = false
+        rollDirByCoord.removeAll()
         engine.glowingMatchCoords.removeAll()
     }
 
     private func handleTap(on coord: GridCoord) {
         if engine.twistArmed {
             let speed = engine.paceSpeed
-            let didTwist = withAnimation(.spring(response: speed.springResponse, dampingFraction: 0.74)) {
-                engine.beginTwist180Only(at: coord)
-            }
+            let didTwist = engine.beginTwist180Only(at: coord)
             if didTwist {
+                rollDirByCoord = [coord: .east]
+                rollTriggerSeq += 1
                 let topPip = engine.grid[coord.row][coord.col]?.orientation.top ?? 6
                 TactileAudioHaptics.shared.playTumble(pip: topPip, audioStretch: speed.audioStretch)
                 runWaveChoreography()
@@ -483,17 +488,20 @@ public struct FDToo0RootView: View {
     }
 
     private func performSwipe(from coord: GridCoord, direction: TumbleDirection) {
-        lastTipDir = direction
         let speed = engine.paceSpeed
-        let moved = withAnimation(.spring(response: speed.springResponse, dampingFraction: 0.74)) {
-            engine.beginSwipeTumbleOnly(at: coord, direction: direction)
-        }
+        let moved = engine.beginSwipeTumbleOnly(at: coord, direction: direction)
         guard moved else { return }
 
-        let destRow = coord.row + direction.rowDelta
-        let destCol = coord.col + direction.colDelta
-        let landedPip = (destRow >= 0 && destRow < engine.blueprint.rows && destCol >= 0 && destCol < engine.blueprint.cols)
-            ? (engine.grid[destRow][destCol]?.orientation.top ?? 4)
+        let dest = GridCoord(coord.row + direction.rowDelta, coord.col + direction.colDelta)
+        var nextRolls: [GridCoord: TumbleDirection] = [dest: direction]
+        if engine.grid[coord.row][coord.col] != nil {
+            nextRolls[coord] = direction.opposite
+        }
+        rollDirByCoord = nextRolls
+        rollTriggerSeq += 1
+
+        let landedPip = (dest.row >= 0 && dest.row < engine.blueprint.rows && dest.col >= 0 && dest.col < engine.blueprint.cols)
+            ? (engine.grid[dest.row][dest.col]?.orientation.top ?? 4)
             : 4
         TactileAudioHaptics.shared.playTumble(pip: landedPip, audioStretch: speed.audioStretch)
 
@@ -507,9 +515,11 @@ public struct FDToo0RootView: View {
     }
 
     private func runWaveChoreography() {
-        guard engine.mode == .fdToo0 else { return }
         choreographyTask?.cancel()
-        isChoreographing = true
+        let isCascadeMode = (engine.mode == .fdToo0)
+        if isCascadeMode {
+            isChoreographing = true
+        }
 
         choreographyTask = Task { @MainActor in
             defer {
@@ -520,6 +530,8 @@ public struct FDToo0RootView: View {
             let initialTumbleNs = UInt64(engine.paceSpeed.tumbleDuration * 1_000_000_000)
             try? await Task.sleep(nanoseconds: initialTumbleNs)
             if Task.isCancelled { return }
+            rollDirByCoord.removeAll()
+            guard isCascadeMode else { return }
 
             var wave = 1
             while !engine.isWon && wave <= 20 {

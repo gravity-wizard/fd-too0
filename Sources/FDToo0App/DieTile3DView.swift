@@ -16,7 +16,11 @@ public struct DieTile3DView: View {
     public let isMatchGlowing: Bool
     public let springResponse: Double
     public let hintDirection: TumbleDirection?
-    public let lastTipDirection: TumbleDirection?
+    public let activeRollDirection: TumbleDirection?
+    public let rollTriggerID: Int
+
+    @State private var rollAngle: Double = 0
+    @State private var rollOffsetFraction: CGFloat = 0
 
     public init(
         die: BoardDie,
@@ -25,7 +29,8 @@ public struct DieTile3DView: View {
         isMatchGlowing: Bool = false,
         springResponse: Double = 0.46,
         hintDirection: TumbleDirection?,
-        lastTipDirection: TumbleDirection?
+        lastTipDirection: TumbleDirection?,
+        rollTriggerID: Int = 0
     ) {
         self.die = die
         self.appearance = appearance
@@ -33,7 +38,8 @@ public struct DieTile3DView: View {
         self.isMatchGlowing = isMatchGlowing
         self.springResponse = springResponse
         self.hintDirection = hintDirection
-        self.lastTipDirection = lastTipDirection
+        self.activeRollDirection = lastTipDirection
+        self.rollTriggerID = rollTriggerID
     }
 
     public var body: some View {
@@ -47,12 +53,16 @@ public struct DieTile3DView: View {
             let side = min(geo.size.width, geo.size.height)
             let corner = side * 0.22
             let pipSize = side * 0.165
+            let stepDist = side + 8.0
 
             ZStack {
-                // 3D Porcelain Cushion Base
+                // 3D Porcelain Cushion Extrusion
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
                     .fill(shadowColor)
-                    .offset(y: side * 0.055)
+                    .offset(
+                        x: extrusionOffset(for: activeRollDirection, fraction: rollOffsetFraction, side: side).width,
+                        y: side * 0.06 + extrusionOffset(for: activeRollDirection, fraction: rollOffsetFraction, side: side).height
+                    )
 
                 // Top Sculpted Pastel Face
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -115,25 +125,66 @@ public struct DieTile3DView: View {
                 }
             }
             .rotation3DEffect(
-                .degrees(lastTipDirection == nil ? 0 : 12),
-                axis: rotationAxis(for: lastTipDirection),
-                perspective: 0.55
+                .degrees(rollAngle),
+                axis: rotationAxis(for: activeRollDirection),
+                perspective: 0.62
+            )
+            .offset(
+                x: travelOffset(for: activeRollDirection, step: stepDist * rollOffsetFraction).width,
+                y: travelOffset(for: activeRollDirection, step: stepDist * rollOffsetFraction).height
             )
             .scaleEffect(isMatchGlowing ? 1.07 : (isSelected ? 1.04 : 1.0))
-            .animation(.spring(response: springResponse, dampingFraction: 0.74), value: die.orientation)
             .animation(.easeInOut(duration: 0.18), value: isMatchGlowing)
             .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isSelected)
+            .onAppear {
+                triggerRollAnimation()
+            }
+            .onChange(of: rollTriggerID) { _, _ in
+                triggerRollAnimation()
+            }
         }
         .aspectRatio(1, contentMode: .fit)
+        .zIndex(rollOffsetFraction > 0.01 ? 10 : 1)
+    }
+
+    private func triggerRollAnimation() {
+        guard activeRollDirection != nil, rollTriggerID > 0 else { return }
+        rollAngle = -82
+        rollOffsetFraction = 1.0
+        withAnimation(.spring(response: springResponse, dampingFraction: 0.76)) {
+            rollAngle = 0
+            rollOffsetFraction = 0
+        }
     }
 
     private func rotationAxis(for direction: TumbleDirection?) -> (x: CGFloat, y: CGFloat, z: CGFloat) {
         switch direction {
-        case .north: return (1, 0, 0)
-        case .south: return (-1, 0, 0)
-        case .east:  return (0, 1, 0)
-        case .west:  return (0, -1, 0)
-        case .none:  return (0, 0, 1)
+        case .north: return (-1, 0, 0)
+        case .south: return (1, 0, 0)
+        case .east:  return (0, -1, 0)
+        case .west:  return (0, 1, 0)
+        case .none:  return (0, 1, 0)
+        }
+    }
+
+    private func travelOffset(for direction: TumbleDirection?, step: CGFloat) -> CGSize {
+        switch direction {
+        case .north: return CGSize(width: 0, height: step)
+        case .south: return CGSize(width: 0, height: -step)
+        case .east:  return CGSize(width: -step, height: 0)
+        case .west:  return CGSize(width: step, height: 0)
+        case .none:  return .zero
+        }
+    }
+
+    private func extrusionOffset(for direction: TumbleDirection?, fraction: CGFloat, side: CGFloat) -> CGSize {
+        let depth = side * 0.12 * fraction
+        switch direction {
+        case .north: return CGSize(width: 0, height: -depth)
+        case .south: return CGSize(width: 0, height: depth)
+        case .east:  return CGSize(width: depth, height: 0)
+        case .west:  return CGSize(width: -depth, height: 0)
+        case .none:  return .zero
         }
     }
 }
