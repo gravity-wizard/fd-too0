@@ -81,20 +81,21 @@ public struct FDToo0RootView: View {
     // MARK: - Top Flipper & Theme Bar
 
     private var headerFlipperBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button {
                 cancelChoreography()
                 engine.toggleFlipper()
                 TactileAudioHaptics.shared.playTumble(pip: 6, audioStretch: engine.paceSpeed.audioStretch)
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Text("⇄")
-                        .font(.headline.bold())
+                        .font(.subheadline.bold())
                     Text(engine.mode.shortBadge)
-                        .font(.subheadline.weight(.heavy))
+                        .font(.caption.weight(.heavy))
+                        .lineLimit(1)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(
                     Capsule()
                         .fill(engine.mode == .fdToo0 ? Color(red: 0.84, green: 0.56, blue: 0.34) : Color(red: 0.35, green: 0.62, blue: 0.52))
@@ -108,17 +109,20 @@ public struct FDToo0RootView: View {
                 showAtlas = true
             } label: {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Lv \(engine.currentLevel) / 1023\(engine.blueprint.isBossLevel ? " • BOSS" : "")")
-                        .font(.subheadline.weight(.bold).monospacedDigit())
+                    Text("Lv \(engine.currentLevel)/1023\(engine.blueprint.isBossLevel ? " • BOSS" : "") ▾")
+                        .font(.footnote.weight(.bold).monospacedDigit())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
                     Text(engine.blueprint.world.name)
                         .font(.caption2)
+                        .lineLimit(1)
                         .opacity(0.75)
                 }
                 .foregroundStyle(primaryInk)
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Button {
                 let modes = BoardAppearanceMode.allCases
@@ -126,9 +130,11 @@ public struct FDToo0RootView: View {
                 engine.appearanceMode = modes[(idx + 1) % modes.count]
             } label: {
                 Text(engine.appearanceMode.displayName)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
                     .background(Capsule().strokeBorder(primaryInk.opacity(0.28), lineWidth: 1))
                     .foregroundStyle(primaryInk)
             }
@@ -138,7 +144,7 @@ public struct FDToo0RootView: View {
                 showRules = true
             } label: {
                 Image(systemName: "questionmark.circle")
-                    .font(.title3)
+                    .font(.body)
                     .foregroundStyle(primaryInk)
             }
             .buttonStyle(.plain)
