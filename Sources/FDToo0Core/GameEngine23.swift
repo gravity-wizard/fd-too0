@@ -531,8 +531,9 @@ public final class GameEngine23 {
     private func applyGravityAndRefill() {
         let rows = blueprint.rows
         let cols = blueprint.cols
+        var writeRows = Array(repeating: -1, count: cols)
 
-        // Leave at most 1 breathing pocket if blueprint started with one
+        // Pass 1: Shift surviving dice straight down in every column (preserving 3D orientation)
         for c in 0..<cols {
             var writeRow = rows - 1
             for r in stride(from: rows - 1, through: 0, by: -1) {
@@ -551,22 +552,52 @@ public final class GameEngine23 {
                     writeRow -= 1
                 }
             }
+            writeRows[c] = writeRow
+        }
 
-            // Spawn fresh Pastel HSB dice in remaining top slots (keeping 1 center tactical pocket open if desired)
-            while writeRow >= 0 {
-                if blueprint.pads[writeRow][c] != .hole {
-                    let isCenterPocket = (writeRow == 0 && c == cols / 2 && countEmptyPlayableSlots() <= 1)
-                    if !isCenterPocket {
-                        let pip = spawnRNG.nextInt(6) + 1
-                        let yaw = spawnRNG.nextInt(4)
-                        let hue = PastelHueFamily(rawValue: spawnRNG.nextInt(6) + 1) ?? .mintSage
-                        nextSpawnID += 1
-                        grid[writeRow][c] = BoardDie(
-                            id: nextSpawnID,
-                            orientation: .canonical(topPip: pip, yawSteps: yaw),
-                            pastelHue: hue
-                        )
+        // Pass 2: Reserve 1 tactical breathing pocket (preferring top-center) if blueprint started with one
+        let blueprintHasPocket = (0..<rows).contains { rr in
+            (0..<cols).contains { cc in
+                blueprint.initialDice[rr][cc] == nil && blueprint.pads[rr][cc] != .hole
+            }
+        }
+        var reservedPocket: GridCoord? = nil
+        if blueprintHasPocket {
+            let centerCol = cols / 2
+            if blueprint.pads[0][centerCol] != .hole && grid[0][centerCol] == nil {
+                reservedPocket = GridCoord(row: 0, col: centerCol)
+            } else {
+                var bestDist = Int.max
+                for rr in 0..<rows {
+                    for cc in 0..<cols {
+                        if blueprint.pads[rr][cc] != .hole && grid[rr][cc] == nil {
+                            let dist = rr * 10 + abs(cc - centerCol)
+                            if dist < bestDist {
+                                bestDist = dist
+                                reservedPocket = GridCoord(row: rr, col: cc)
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        for c in 0..<cols {
+            var writeRow = writeRows[c]
+            while writeRow >= 0 {
+                let coord = GridCoord(row: writeRow, col: c)
+                if blueprint.pads[writeRow][c] != .hole
+                    && grid[writeRow][c] == nil
+                    && coord != reservedPocket {
+                    let pip = spawnRNG.nextInt(6) + 1
+                    let yaw = spawnRNG.nextInt(4)
+                    let hue = PastelHueFamily(rawValue: spawnRNG.nextInt(6) + 1) ?? .mintSage
+                    nextSpawnID += 1
+                    grid[writeRow][c] = BoardDie(
+                        id: nextSpawnID,
+                        orientation: .canonical(topPip: pip, yawSteps: yaw),
+                        pastelHue: hue
+                    )
                 }
                 writeRow -= 1
             }

@@ -83,8 +83,12 @@ public struct DieTile3DView: View {
                             )
                     )
 
-                // Standard 3x3 Die Pip Matrix (1...6)
-                PipMatrixView(pipCount: die.orientation.top, pipDiameter: pipSize, pipColor: pipColor)
+                // True 3D Casino Die Pip Matrix (1...6, respecting yaw for 2, 3, and 6 rails!)
+                PipMatrixView(
+                    activeSlots: die.orientation.topFacePipSlots,
+                    pipDiameter: pipSize,
+                    pipColor: pipColor
+                )
                     .padding(side * 0.18)
 
                 // Frosted Ice Overlay
@@ -159,10 +163,10 @@ public struct DieTile3DView: View {
 
     private func rotationAxis(for direction: TumbleDirection?) -> (x: CGFloat, y: CGFloat, z: CGFloat) {
         switch direction {
-        case .north: return (-1, 0, 0)
-        case .south: return (1, 0, 0)
-        case .east:  return (0, -1, 0)
-        case .west:  return (0, 1, 0)
+        case .north: return (1, 0, 0)
+        case .south: return (-1, 0, 0)
+        case .east:  return (0, 1, 0)
+        case .west:  return (0, -1, 0)
         case .none:  return (0, 1, 0)
         }
     }
@@ -190,21 +194,9 @@ public struct DieTile3DView: View {
 }
 
 private struct PipMatrixView: View {
-    let pipCount: Int
+    let activeSlots: Set<Int>
     let pipDiameter: CGFloat
     let pipColor: Color
-
-    // Active indices in a 3x3 grid (0..8) for standard dice faces 1..6
-    private var activeSlots: Set<Int> {
-        switch pipCount {
-        case 1: return [4]
-        case 2: return [2, 6]
-        case 3: return [2, 4, 6]
-        case 4: return [0, 2, 6, 8]
-        case 5: return [0, 2, 4, 6, 8]
-        default: return [0, 2, 3, 5, 6, 8]
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {

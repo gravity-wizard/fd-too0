@@ -111,4 +111,35 @@ final class FDToo0CoreTests: XCTestCase {
         XCTAssertEqual(decoded.pentadsFromOnes, 1)
         XCTAssertTrue(decoded.isOddPentadSignature)
     }
+
+    func testCasinoDieChiralitySixRailsAndPocketPreservation() {
+        // Western RH000 chirality: 6 yaw=0 has vertical rails [0,2,3,5,6,8] pointing at 3 & 4 (N/S),
+        // while 6 yaw=1 has horizontal rails [0,1,2,6,7,8] pointing at 3 & 4 (E/W).
+        let sixVertical = DieOrientation.canonical(topPip: 6, yawSteps: 0)
+        XCTAssertEqual(sixVertical.sixRailsVertical, true)
+        XCTAssertEqual(sixVertical.topFacePipSlots, [0, 2, 3, 5, 6, 8])
+        XCTAssertTrue([3, 4].contains(sixVertical.tipped(.south).top))
+
+        let sixHorizontal = DieOrientation.canonical(topPip: 6, yawSteps: 1)
+        XCTAssertEqual(sixHorizontal.sixRailsVertical, false)
+        XCTAssertEqual(sixHorizontal.topFacePipSlots, [0, 1, 2, 6, 7, 8])
+        XCTAssertTrue([2, 5].contains(sixHorizontal.tipped(.south).top))
+
+        // Verify all 24 canonical states are distinct
+        var allStates = Set<DieOrientation>()
+        for pip in 1...6 {
+            for yaw in 0..<4 {
+                allStates.insert(.canonical(topPip: pip, yawSteps: yaw))
+            }
+        }
+        XCTAssertEqual(allStates.count, 24)
+
+        // Verify cascade preserves 1 tactical breathing pocket on 6x5 board
+        let engine = GameEngine23(initialMode: .fdToo0, startLevel: 120)
+        if let hint = engine.computeBestHint() {
+            XCTAssertTrue(engine.swipeDie(at: hint.from, direction: hint.direction))
+            let empties = engine.grid.flatMap { $0 }.filter { $0 == nil }.count
+            XCTAssertGreaterThanOrEqual(empties, 1)
+        }
+    }
 }

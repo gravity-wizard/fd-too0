@@ -69,16 +69,21 @@ public struct DieOrientation: Equatable, Hashable, Codable, Sendable {
         self.east = east
     }
 
-    /// Canonical upright orientation for any desired top pip (1...6).
+    /// Canonical Western Right-Handed Casino Die (RH000) orientation for any desired top pip (1...6):
+    /// - Opposite faces sum to 7 (1-6, 2-5, 3-4).
+    /// - Right-handed chirality ("Look for the V"): with 1 on Top, 2 on South (front-left) and 3 on East (front-right),
+    ///   1 -> 2 -> 3 runs counter-clockwise around their shared vertex.
+    /// - Pip 6 yaw=0 has 3 & 4 at North/South (vertical ⋮⋮ rails pointing toward 3 & 4);
+    ///   yaw=1 has 3 & 4 at East/West (horizontal ⋯ rails pointing toward 3 & 4).
     public static func canonical(topPip: Int, yawSteps: Int = 0) -> DieOrientation {
         let base: DieOrientation
         switch ((topPip - 1) % 6 + 6) % 6 + 1 {
-        case 1: base = DieOrientation(top: 1, north: 2, east: 3)
-        case 2: base = DieOrientation(top: 2, north: 6, east: 3)
-        case 3: base = DieOrientation(top: 3, north: 2, east: 6)
-        case 4: base = DieOrientation(top: 4, north: 2, east: 1)
-        case 5: base = DieOrientation(top: 5, north: 1, east: 3)
-        default: base = DieOrientation(top: 6, north: 5, east: 3)
+        case 1: base = DieOrientation(top: 1, north: 5, east: 3)
+        case 2: base = DieOrientation(top: 2, north: 4, east: 1)
+        case 3: base = DieOrientation(top: 3, north: 1, east: 5)
+        case 4: base = DieOrientation(top: 4, north: 5, east: 1)
+        case 5: base = DieOrientation(top: 5, north: 6, east: 3)
+        default: base = DieOrientation(top: 6, north: 3, east: 5)
         }
         var rotated = base
         let turns = ((yawSteps % 4) + 4) % 4
@@ -86,6 +91,61 @@ public struct DieOrientation: Equatable, Hashable, Codable, Sendable {
             rotated = rotated.spunClockwise()
         }
         return rotated
+    }
+
+    /// Projects the rigid 3D engraved pips of a physical Western Casino Die (RH000)
+    /// onto the Top face's 3×3 slot grid (0...8).
+    public var topFacePipSlots: Set<Int> {
+        switch top {
+        case 1: return [4]
+        case 4: return [0, 2, 6, 8]
+        case 5: return [0, 2, 4, 6, 8]
+        default: break
+        }
+
+        var normals: [Int: (Int, Int, Int)] = [:]
+        normals[top] = (0, 0, 1)
+        normals[bottom] = (0, 0, -1)
+        normals[north] = (0, -1, 0)
+        normals[south] = (0, 1, 0)
+        normals[east] = (1, 0, 0)
+        normals[west] = (-1, 0, 0)
+
+        func toTopSlot(_ dx: Int, _ dy: Int) -> Int {
+            (dy + 1) * 3 + (dx + 1)
+        }
+
+        guard let n1 = normals[1], let n2 = normals[2], let n3 = normals[3] else {
+            return [0, 2, 3, 5, 6, 8]
+        }
+        let n4 = (-n3.0, -n3.1, -n3.2)
+        let n5 = (-n2.0, -n2.1, -n2.2)
+        let n6 = (-n1.0, -n1.1, -n1.2)
+
+        if top == 2 {
+            return [
+                toTopSlot(n1.0 + n4.0, n1.1 + n4.1),
+                toTopSlot(n6.0 + n3.0, n6.1 + n3.1)
+            ]
+        }
+        if top == 3 {
+            return [
+                toTopSlot(n6.0 + n2.0, n6.1 + n2.1),
+                4,
+                toTopSlot(n1.0 + n5.0, n1.1 + n5.1)
+            ]
+        }
+        // top == 6: 4 corners + 2 middle pips on 2 & 5 edges so the two 3-pip rails point toward 3 & 4!
+        return [
+            0, 2, 6, 8,
+            toTopSlot(n2.0, n2.1),
+            toTopSlot(n5.0, n5.1)
+        ]
+    }
+
+    public var sixRailsVertical: Bool? {
+        guard top == 6 else { return nil }
+        return topFacePipSlots.contains(3)
     }
 
     /// 90-degree physical tumble in a cardinal direction across the board tray.
