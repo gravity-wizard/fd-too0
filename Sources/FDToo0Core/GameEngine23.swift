@@ -25,10 +25,50 @@ public struct SuggestedHint: Equatable, Sendable {
     public let rationale: String
 }
 
+public enum StoryMatchTier: String, Codable, Sendable {
+    case trio
+    case quad
+    case pentad
+    case hexad
+}
+
+public struct MatchTierTally: Equatable, Codable, Sendable {
+    public var trios: Int
+    public var quads: Int
+    public var pentads: Int
+    public var hexads: Int
+
+    public init(trios: Int = 0, quads: Int = 0, pentads: Int = 0, hexads: Int = 0) {
+        self.trios = trios
+        self.quads = quads
+        self.pentads = pentads
+        self.hexads = hexads
+    }
+}
+
+public struct ScoredMatchEvent: Equatable, Sendable {
+    public let tier: StoryMatchTier
+    public let label: String
+    public let thousandsBase: Int
+    public let storyTail: Int
+    public let coords: [GridCoord]
+}
+
+public struct DecodedScoreStory: Equatable, Sendable {
+    public let htoString: String
+    public let hexadsFromHundreds: Int
+    public let quadsFromTens: Int
+    public let pentadsFromOnes: Int
+    public let isOddPentadSignature: Bool
+    public let thousandsTotal: Int
+    public let summaryLine: String
+}
+
 public struct MoveSnapshot: Sendable {
     public let grid: [[BoardDie?]]
     public let moves: Int
     public let score: Int
+    public let matchTally: MatchTierTally
     public let diceCleared: Int
     public let frostCleared: Int
     public let chainsFreed: Int
@@ -142,6 +182,7 @@ public final class GameEngine23 {
     public private(set) var moves: Int = 0
     public private(set) var elapsedSeconds: Int = 0
     public private(set) var score: Int = 0
+    public private(set) var matchTally: MatchTierTally = MatchTierTally()
     public private(set) var diceCleared: Int = 0
     public private(set) var frostCleared: Int = 0
     public private(set) var chainsFreed: Int = 0
@@ -197,6 +238,7 @@ public final class GameEngine23 {
         self.moves = 0
         self.elapsedSeconds = 0
         self.score = 0
+        self.matchTally = MatchTierTally()
         self.diceCleared = 0
         self.frostCleared = 0
         self.chainsFreed = 0
@@ -232,6 +274,7 @@ public final class GameEngine23 {
         grid = snap.grid
         moves = snap.moves
         score = snap.score
+        matchTally = snap.matchTally
         diceCleared = snap.diceCleared
         frostCleared = snap.frostCleared
         chainsFreed = snap.chainsFreed
@@ -362,8 +405,8 @@ public final class GameEngine23 {
     @discardableResult
     public func commitSingleCascadeWave(waveIndex: Int) -> CascadeWaveOutcome? {
         guard mode == .fdToo0, !isWon else { return nil }
-        let matchGroups = findThreePlusPipMatches(in: grid)
-        if matchGroups.isEmpty { return nil }
+        let events = evaluateStoryMatches(in: grid)
+        if events.isEmpty { return nil }
 
         glowingMatchCoords.removeAll()
         bestChain = max(bestChain, waveIndex)
@@ -374,14 +417,14 @@ public final class GameEngine23 {
         var padMultiplier = 1
         var triggeredChromaSurge = false
 
-        for group in matchGroups {
-            let hues = Set(group.compactMap { grid[$0.row][$0.col]?.pastelHue })
+        for ev in events {
+            let hues = Set(ev.coords.compactMap { grid[$0.row][$0.col]?.pastelHue })
             if hues.count == 1 {
                 triggeredChromaSurge = true
                 padMultiplier = max(padMultiplier, 3)
             }
 
-            for coord in group {
+            for coord in ev.coords {
                 if case .chromaMultiplier(let m) = blueprint.pads[coord.row][coord.col] {
                     padMultiplier = max(padMultiplier, m)
                 }
@@ -392,6 +435,20 @@ public final class GameEngine23 {
                 }
             }
         }
+
+        // 1A Pure Ledger Rule: Multiply ONLY the Thousands payload by (waveIndex * padMultiplier);
+        // add the H-T-O Story Tail (+000 / +010 / +001 / +100) unmultiplied!
+        var waveScoreGain = 0
+        for ev in events {
+            waveScoreGain += ev.thousandsBase * waveIndex * padMultiplier + ev.storyTail
+            switch ev.tier {
+            case .trio:   matchTally.trios += 1
+            case .quad:   matchTally.quads += 1
+            case .pentad: matchTally.pentads += 1
+            case .hexad:  matchTally.hexads += 1
+            }
+        }
+        score += waveScoreGain
 
         let allAffected = coordsToClear.union(frostThawedCoords)
         for coord in allAffected {
@@ -418,9 +475,7 @@ public final class GameEngine23 {
             grid[coord.row][coord.col] = nil
         }
 
-        let clearedNow = coordsToClear.count + frostThawedCoords.count
         diceCleared += coordsToClear.count
-        score += clearedNow * 100 * waveIndex * padMultiplier
 
         if triggeredChromaSurge && waveIndex == 1 {
             twistCharges = min(5, twistCharges + 1)
@@ -428,9 +483,10 @@ public final class GameEngine23 {
 
         applyGravityAndRefill()
 
-        let surgeNote = triggeredChromaSurge ? " ✦ PASTEL CHROMA SURGE (+1 Twist)!" : ""
-        let chainNote = waveIndex > 1 ? " • Chain ×\(waveIndex)!" : ""
-        lastBanner = "Cleared \(coordsToClear.count) dice\(chainNote)\(surgeNote)"
+        let tierHeadline = events.map(\.label).joined(separator: " + ")
+        let surgeNote = triggeredChromaSurge ? " ✦ CHROMA SURGE ×3 (+1 Twist)!" : ""
+        let chainNote = waveIndex > 1 ? " • Chain ×\(waveIndex)" : ""
+        lastBanner = "+\(waveScoreGain) pts (\(tierHeadline))\(chainNote)\(surgeNote)"
 
         if diceCleared >= blueprint.targetDiceCleared
             && frostCleared >= blueprint.targetFrostCleared
@@ -464,11 +520,10 @@ public final class GameEngine23 {
             if outcome.isChromaSurge { anyChroma = true }
             wave += 1
         }
-        if !isWon && wave > 1 {
+        if !isWon && wave > 2 {
             let chainCount = wave - 1
             let surgeNote = anyChroma ? " ✦ PASTEL CHROMA SURGE (+1 Twist)!" : ""
-            let chainNote = chainCount > 1 ? " • Chain ×\(chainCount)!" : ""
-            lastBanner = "Cleared \(totalPoppedThisTurn) dice\(chainNote)\(surgeNote)"
+            lastBanner = "Cleared \(totalPoppedThisTurn) dice • Chain ×\(chainCount)!\(surgeNote)"
         }
         finalizeTurnAfterWaves()
     }
@@ -536,7 +591,7 @@ public final class GameEngine23 {
         let matchedCount = allDice.filter { $0.orientation.top == targetPip }.count
         lastBanner = "Classic Harmony: \(matchedCount)/\(allDice.count) dice showing \(targetPip)."
         if matchedCount == allDice.count && !allDice.isEmpty {
-            score = max(500, 2_500 - moves * 45)
+            score = max(3, 25 - moves) * 1_000
             completeStageWin()
         }
     }
@@ -618,14 +673,15 @@ public final class GameEngine23 {
                             bestHint = SuggestedHint(from: GridCoord(r, c), direction: dir, rationale: "aligns top pip \(target)")
                         }
                     } else {
-                        let groups = findThreePlusPipMatches(in: sim)
-                        let matchedCells = groups.reduce(0) { $0 + $1.count }
-                        if matchedCells > 0 && matchedCells > bestScore {
-                            bestScore = matchedCells
+                        let events = evaluateStoryMatches(in: sim)
+                        let storyPoints = events.reduce(0) { $0 + $1.thousandsBase + $1.storyTail }
+                        if storyPoints > 0 && storyPoints > bestScore {
+                            bestScore = storyPoints
+                            let headline = events.map(\.label).joined(separator: " + ")
                             bestHint = SuggestedHint(
                                 from: GridCoord(r, c),
                                 direction: dir,
-                                rationale: "triggers a \(matchedCells)-die match!"
+                                rationale: "\(headline) (\(storyPoints) pts)!"
                             )
                         }
                     }
@@ -633,6 +689,101 @@ public final class GameEngine23 {
             }
         }
         return bestHint
+    }
+
+    // MARK: - Story-Score H-T-O Cluster Evaluator & Decoder (1A + 2A)
+
+    public func evaluateStoryMatches(in board: [[BoardDie?]]) -> [ScoredMatchEvent] {
+        let runs = findThreePlusPipMatches(in: board)
+        if runs.isEmpty { return [] }
+
+        let runSets = runs.map { Set($0) }
+        var visited = Array(repeating: false, count: runs.count)
+        var events: [ScoredMatchEvent] = []
+
+        func singleRunEvent(_ run: [GridCoord]) -> ScoredMatchEvent {
+            if run.count >= 6 {
+                return ScoredMatchEvent(tier: .hexad, label: "6-of-a-Kind Hexad", thousandsBase: 41_000, storyTail: 100, coords: run)
+            } else if run.count == 5 {
+                return ScoredMatchEvent(tier: .pentad, label: "5-of-a-Kind Pentad", thousandsBase: 10_000, storyTail: 1, coords: run)
+            } else if run.count == 4 {
+                return ScoredMatchEvent(tier: .quad, label: "4-of-a-Kind Quad", thousandsBase: 5_000, storyTail: 10, coords: run)
+            } else {
+                return ScoredMatchEvent(tier: .trio, label: "3-of-a-Kind Trio", thousandsBase: 3_000, storyTail: 0, coords: run)
+            }
+        }
+
+        for i in 0..<runs.count where !visited[i] {
+            visited[i] = true
+            var queue = [i]
+            var compIndices: [Int] = []
+
+            while !queue.isEmpty {
+                let cur = queue.removeFirst()
+                compIndices.append(cur)
+                for j in 0..<runs.count where !visited[j] {
+                    if !runSets[cur].isDisjoint(with: runSets[j]) {
+                        visited[j] = true
+                        queue.append(j)
+                    }
+                }
+            }
+
+            let compRuns = compIndices.map { runs[$0] }
+            var seen = Set<GridCoord>()
+            var uniqueCoords: [GridCoord] = []
+            for r in compRuns {
+                for pt in r where seen.insert(pt).inserted {
+                    uniqueCoords.append(pt)
+                }
+            }
+            let hasStraightSix = compRuns.contains { $0.count >= 6 }
+
+            if hasStraightSix {
+                events.append(ScoredMatchEvent(tier: .hexad, label: "6-of-a-Kind Hexad", thousandsBase: 41_000, storyTail: 100, coords: uniqueCoords))
+            } else if uniqueCoords.count == 5 {
+                let lbl = compRuns.count > 1 ? "L/T 5-of-a-Kind Pentad" : "5-of-a-Kind Pentad"
+                events.append(ScoredMatchEvent(tier: .pentad, label: lbl, thousandsBase: 10_000, storyTail: 1, coords: uniqueCoords))
+            } else if compRuns.count == 1 {
+                events.append(singleRunEvent(compRuns[0]))
+            } else {
+                for r in compRuns {
+                    events.append(singleRunEvent(r))
+                }
+            }
+        }
+
+        return events
+    }
+
+    public static func decodeScoreStory(_ score: Int, tally: MatchTierTally? = nil) -> DecodedScoreStory {
+        let absVal = max(0, score)
+        let hto = absVal % 1_000
+        let htoString = String(format: "%03d", hto)
+        let hexads = hto / 100
+        let quads = (hto % 100) / 10
+        let pentads = hto % 10
+        let isOdd = (absVal % 2 == 1)
+        let thousandsTotal = absVal / 1_000
+
+        let triosCount: Int
+        if let tally {
+            triosCount = tally.trios
+        } else {
+            triosCount = max(0, (thousandsTotal - (hexads * 41 + pentads * 10 + quads * 5)) / 3)
+        }
+
+        let oddTag = isOdd ? ", ODD!" : ""
+        let summary = "H-T-O [\(htoString)] → \(hexads)×6-Kind (+100) • \(quads)×4-Kind (+10) • \(pentads)×5-Kind (+1\(oddTag)) • \(triosCount)×3-Kind"
+        return DecodedScoreStory(
+            htoString: htoString,
+            hexadsFromHundreds: hexads,
+            quadsFromTens: quads,
+            pentadsFromOnes: pentads,
+            isOddPentadSignature: isOdd,
+            thousandsTotal: thousandsTotal,
+            summaryLine: summary
+        )
     }
 
     // MARK: - Helpers & Persistence
@@ -709,6 +860,7 @@ public final class GameEngine23 {
                 grid: grid,
                 moves: moves,
                 score: score,
+                matchTally: matchTally,
                 diceCleared: diceCleared,
                 frostCleared: frostCleared,
                 chainsFreed: chainsFreed,

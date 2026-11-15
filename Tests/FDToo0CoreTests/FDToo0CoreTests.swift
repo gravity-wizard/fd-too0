@@ -81,4 +81,34 @@ final class FDToo0CoreTests: XCTestCase {
         XCTAssertEqual(phasedEngine.score, syncEngine.score)
         XCTAssertEqual(phasedEngine.diceCleared, syncEngine.diceCleared)
     }
+
+    func testStoryScoreHTOLedgerAndDecode() {
+        let engine = GameEngine23(initialMode: .fdToo0, startLevel: 1)
+        let mk = { (pip: Int) -> BoardDie in
+            BoardDie(id: 1, orientation: .canonical(topPip: pip, yawSteps: 0), pastelHue: .mintSage)
+        }
+
+        // Straight 6 on 6x6 -> 41,100
+        var g6: [[BoardDie?]] = Array(repeating: Array(repeating: nil, count: 6), count: 6)
+        for c in 0..<6 { g6[0][c] = mk(6) }
+        let ev6 = engine.evaluateStoryMatches(in: g6)
+        XCTAssertEqual(ev6.count, 1)
+        XCTAssertEqual(ev6.first?.thousandsBase, 41_000)
+        XCTAssertEqual(ev6.first?.storyTail, 100)
+
+        // L-5 intersection -> 10,001 (Pentad, ODD!)
+        var gL5: [[BoardDie?]] = Array(repeating: Array(repeating: nil, count: 4), count: 4)
+        gL5[0][0] = mk(5); gL5[0][1] = mk(5); gL5[0][2] = mk(5); gL5[1][0] = mk(5); gL5[2][0] = mk(5)
+        let evL5 = engine.evaluateStoryMatches(in: gL5)
+        XCTAssertEqual(evL5.count, 1)
+        XCTAssertEqual((evL5.first?.thousandsBase ?? 0) + (evL5.first?.storyTail ?? 0), 10_001)
+
+        // Decode 64,121 -> [121] = 1x Hexad + 2x Quad + 1x Pentad (ODD!) + 1x Trio
+        let decoded = GameEngine23.decodeScoreStory(64_121)
+        XCTAssertEqual(decoded.htoString, "121")
+        XCTAssertEqual(decoded.hexadsFromHundreds, 1)
+        XCTAssertEqual(decoded.quadsFromTens, 2)
+        XCTAssertEqual(decoded.pentadsFromOnes, 1)
+        XCTAssertTrue(decoded.isOddPentadSignature)
+    }
 }

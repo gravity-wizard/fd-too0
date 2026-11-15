@@ -15,6 +15,7 @@ public struct FDToo0RootView: View {
     @State private var sparkleScene = CascadeSparkleScene(size: CGSize(width: 420, height: 420))
     @State private var showAtlas = false
     @State private var showRules = false
+    @State private var showScoreStory = false
     @State private var rollDirByCoord: [GridCoord: TumbleDirection] = [:]
     @State private var rollTriggerSeq: Int = 0
     @State private var choreographyTask: Task<Void, Never>? = nil
@@ -198,7 +199,23 @@ public struct FDToo0RootView: View {
                     label: "TIME / \(engine.paceSpeed.emoji) PAR",
                     value: "\(engine.elapsedSeconds)s/\(engine.effectiveParSeconds)s"
                 )
-                statPill(label: "SCORE", value: "\(engine.score)")
+                Button {
+                    showScoreStory.toggle()
+                } label: {
+                    statPill(
+                        label: engine.score % 2 == 1 ? "SCORE • ODD✦" : "SCORE ▾",
+                        value: "\(engine.score)"
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if showScoreStory && engine.mode == .fdToo0 {
+                Text(GameEngine23.decodeScoreStory(engine.score, tally: engine.matchTally).summaryLine)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(primaryInk.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
             }
 
             Text(engine.lastBanner)
@@ -419,10 +436,17 @@ public struct FDToo0RootView: View {
                 Text("Level #\(engine.currentLevel) Complete!")
                     .font(.title2.weight(.heavy))
 
-                Text("Moves: \(engine.moves) (Par \(engine.blueprint.parMoves)) • Time: \(engine.elapsedSeconds)s (\(engine.paceSpeed.emoji) Par \(engine.effectiveParSeconds)s)")
+                Text("Moves: \(engine.moves) (Par \(engine.blueprint.parMoves)) • Time: \(engine.elapsedSeconds)s (\(engine.paceSpeed.emoji) Par \(engine.effectiveParSeconds)s) • Score: \(engine.score)")
                     .font(.subheadline)
                     .opacity(0.85)
                     .multilineTextAlignment(.center)
+
+                if engine.mode == .fdToo0 {
+                    Text(GameEngine23.decodeScoreStory(engine.score, tally: engine.matchTally).summaryLine)
+                        .font(.caption.weight(.semibold))
+                        .opacity(0.92)
+                        .multilineTextAlignment(.center)
+                }
 
                 HStack(spacing: 12) {
                     Button("Replay") {
