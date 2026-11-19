@@ -28,6 +28,7 @@ public struct FDToo0RootView: View {
     @State private var showRules = false
     @State private var showScoreStory = false
     @State private var rollDirByCoord: [GridCoord: TumbleDirection] = [:]
+    @State private var twistCoords: Set<GridCoord> = []
     @State private var rollTriggerSeq: Int = 0
     @State private var choreographyTask: Task<Void, Never>? = nil
     @State private var isChoreographing: Bool = false
@@ -145,6 +146,7 @@ public struct FDToo0RootView: View {
                 Text("\(engine.visualSkin.badgeGlyph) \(engine.visualSkin.shortLabel)")
                     .font(.system(size: 11, weight: .bold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.76)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
                     .background(Capsule().fill(trayBackground))
@@ -157,14 +159,23 @@ public struct FDToo0RootView: View {
                 let styles = CameraProjectionStyle.allCases
                 let idx = styles.firstIndex(of: engine.cameraProjection) ?? 0
                 engine.cameraProjection = styles[(idx + 1) % styles.count]
+                TactileAudioHaptics.shared.playTumble(pip: 3)
             } label: {
-                Text("🎥 \(engine.cameraProjection.shortLabel)")
+                let isTrainer = (engine.cameraProjection == .flat2D)
+                Text("\(isTrainer ? "🎓" : "🎥") \(engine.cameraProjection.shortLabel)")
                     .font(.system(size: 11, weight: .bold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.76)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(trayBackground))
-                    .overlay(Capsule().strokeBorder(primaryInk.opacity(0.22), lineWidth: 1))
+                    .background(
+                        Capsule().fill(
+                            isTrainer
+                                ? Color(red: 0.24, green: 0.56, blue: 0.45).opacity(0.32)
+                                : trayBackground
+                        )
+                    )
+                    .overlay(Capsule().strokeBorder(primaryInk.opacity(0.24), lineWidth: 1))
                     .foregroundStyle(primaryInk)
             }
             .buttonStyle(.plain)
@@ -179,6 +190,7 @@ public struct FDToo0RootView: View {
                 Text(engine.appearanceMode.displayName)
                     .font(.system(size: 10, weight: .semibold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.76)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(Capsule().strokeBorder(primaryInk.opacity(0.24), lineWidth: 1))
@@ -339,11 +351,16 @@ public struct FDToo0RootView: View {
         VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 9, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .opacity(0.65)
             Text(value)
                 .font(.system(size: 13, weight: .heavy, design: .rounded).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4)
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -415,6 +432,7 @@ public struct FDToo0RootView: View {
                 if let die = engine.grid[row][col] {
                     let hintDir = (engine.activeHint?.from == coord) ? engine.activeHint?.direction : nil
                     let rollDir = rollDirByCoord[coord]
+                    let isTwisting = twistCoords.contains(coord)
                     DieTile3DView(
                         die: die,
                         appearance: engine.appearanceMode,
@@ -424,7 +442,8 @@ public struct FDToo0RootView: View {
                         springResponse: engine.paceSpeed.springResponse,
                         hintDirection: hintDir,
                         lastTipDirection: rollDir,
-                        rollTriggerID: rollDir != nil ? rollTriggerSeq : 0
+                        isInPlaceTwist: isTwisting,
+                        rollTriggerID: (rollDir != nil || isTwisting) ? rollTriggerSeq : 0
                     )
                     .gesture(
                         DragGesture(minimumDistance: 14)
@@ -452,7 +471,7 @@ public struct FDToo0RootView: View {
                 }
             }
             .aspectRatio(1, contentMode: .fit)
-            .zIndex(rollDirByCoord[coord] != nil ? 12 : 1)
+            .zIndex((rollDirByCoord[coord] != nil || twistCoords.contains(coord)) ? 12 : 1)
         }
     }
 
@@ -476,7 +495,7 @@ public struct FDToo0RootView: View {
         }
     }
 
-    // MARK: - 6-Face Learned-Player Cube Peek Compass
+    // MARK: - 6-Face Learned-Player Cube Peek & Interactive Dice Trainer Compass
 
     private var selectedDieCompassHUD: some View {
         Group {
@@ -484,15 +503,31 @@ public struct FDToo0RootView: View {
                 let o = die.orientation
                 let sig = LearnedGeometryOracle.signature(for: o)
                 let topToken = engine.visualSkin == .royalFaceCards ? sig.faceCardBadge : sig.displayBadge
-                HStack(spacing: 10) {
-                    Text("(\(sel.row + 1),\(sel.col + 1)) Top \(topToken) • TF \(o.tfCode)")
-                        .font(.caption2.weight(.bold))
-                    Spacer()
-                    Text("↑\(o.nextTopPip(whenTipped: .north))  →\(o.nextTopPip(whenTipped: .east))  ↓\(o.nextTopPip(whenTipped: .south))  ←\(o.nextTopPip(whenTipped: .west))")
-                        .font(.caption2.monospacedDigit().weight(.semibold))
+                HStack(spacing: 6) {
+                    Text("(\(sel.row + 1),\(sel.col + 1)) Top \(topToken) • Bot \(o.bottom) • TF \(o.tfCode)")
+                        .font(.system(size: 11, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+
+                    Spacer(minLength: 4)
+
+                    ForEach([TumbleDirection.north, .south, .west, .east], id: \.self) { dir in
+                        Button {
+                            guard !isChoreographing else { return }
+                            performSwipe(from: sel, direction: dir)
+                        } label: {
+                            Text("\(dir.arrowGlyph)\(o.nextTopPip(whenTipped: dir))")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded).monospacedDigit())
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(primaryInk.opacity(0.10)))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isChoreographing)
+                    }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(RoundedRectangle(cornerRadius: 10).fill(trayBackground))
                 .foregroundStyle(primaryInk)
             } else {
@@ -508,25 +543,54 @@ public struct FDToo0RootView: View {
     // MARK: - Bottom Control Deck
 
     private var bottomControlDeck: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button {
                 cancelChoreography()
                 engine.undoLastMove()
             } label: {
                 Label("Undo", systemImage: "arrow.uturn.backward")
                     .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .buttonStyle(.bordered)
             .disabled(!engine.canUndo || isChoreographing)
 
             Button {
-                engine.twistArmed.toggle()
+                handleTwistButtonPressed()
             } label: {
-                Label("Twist 180° (\(engine.twistCharges))", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.caption.weight(.bold))
+                let hasSel = (engine.selectedCoord != nil)
+                let title: String = {
+                    if engine.twistArmed {
+                        return "⚡ Tap Die (\(engine.twistCharges))"
+                    } else if hasSel {
+                        return "Twist 180° Now (\(engine.twistCharges))"
+                    } else {
+                        return "Twist 180° (\(engine.twistCharges))"
+                    }
+                }()
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.caption.weight(.heavy))
+                    Text(title)
+                        .font(.caption.weight(.heavy))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(
+                        engine.twistCharges == 0
+                            ? Color.gray.opacity(0.32)
+                            : (engine.twistArmed
+                                ? Color.orange
+                                : (hasSel ? Color(red: 0.90, green: 0.56, blue: 0.16) : Color.teal))
+                    )
+                )
+                .foregroundStyle(.white)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(engine.twistArmed ? .orange : .teal)
+            .buttonStyle(.plain)
             .disabled(engine.twistCharges == 0 || isChoreographing)
 
             Button {
@@ -534,6 +598,8 @@ public struct FDToo0RootView: View {
             } label: {
                 Label("Hint", systemImage: "lightbulb")
                     .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .buttonStyle(.bordered)
             .disabled(isChoreographing)
@@ -544,6 +610,8 @@ public struct FDToo0RootView: View {
             } label: {
                 Label("Replay", systemImage: "arrow.clockwise")
                     .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .buttonStyle(.bordered)
         }
@@ -602,19 +670,65 @@ public struct FDToo0RootView: View {
         choreographyTask = nil
         isChoreographing = false
         rollDirByCoord.removeAll()
+        twistCoords.removeAll()
         engine.glowingMatchCoords.removeAll()
     }
 
-    private func handleTap(on coord: GridCoord) {
+    private func handleTwistButtonPressed() {
+        guard !isChoreographing, engine.twistCharges > 0 else { return }
+
+        // If a die is already selected on the board, immediately flip it 180° (Top <-> Bottom, Sum-7)!
+        if let sel = engine.selectedCoord,
+           sel.row >= 0, sel.row < engine.blueprint.rows,
+           sel.col >= 0, sel.col < engine.blueprint.cols,
+           engine.grid[sel.row][sel.col] != nil {
+            executeTwist180(at: sel, keepSelected: true)
+            return
+        }
+
+        // Otherwise arm/disarm 180° Twist with unmistakable visual + audio + banner feedback
+        engine.twistArmed.toggle()
         if engine.twistArmed {
-            let speed = engine.paceSpeed
-            let didTwist = engine.beginTwist180Only(at: coord)
-            if didTwist {
-                rollDirByCoord = [coord: .east]
-                rollTriggerSeq += 1
-                let topPip = engine.grid[coord.row][coord.col]?.orientation.top ?? 6
-                TactileAudioHaptics.shared.playTumble(pip: topPip, audioStretch: speed.audioStretch)
-                runWaveChoreography()
+            engine.setBanner("⚡ 180° Twist Armed! Tap any die on the board to flip Top ↔ Bottom (Sum-7).")
+        } else {
+            engine.setBanner("Twist disarmed • Tap or swipe any die ↑ ↓ ← → (Opposite faces = 7).")
+        }
+        TactileAudioHaptics.shared.playTumble(
+            pip: engine.twistArmed ? 6 : 3,
+            audioStretch: engine.paceSpeed.audioStretch
+        )
+    }
+
+    private func executeTwist180(at coord: GridCoord, keepSelected: Bool) {
+        let speed = engine.paceSpeed
+        guard engine.beginTwist180Only(at: coord) else { return }
+
+        rollDirByCoord.removeAll()
+        twistCoords = [coord]
+        rollTriggerSeq += 1
+        if keepSelected && engine.grid[coord.row][coord.col] != nil {
+            engine.selectedCoord = coord
+        }
+
+        let topPip = engine.grid[coord.row][coord.col]?.orientation.top ?? 6
+        TactileAudioHaptics.shared.playTumble(pip: topPip, audioStretch: speed.audioStretch)
+
+        if engine.isWon {
+            TactileAudioHaptics.shared.playStageWin(audioStretch: speed.audioStretch)
+            sparkleScene.emitBurst(count: 28, durationScale: speed.sparkleScale)
+            return
+        }
+
+        runWaveChoreography()
+    }
+
+    private func handleTap(on coord: GridCoord) {
+        guard coord.row >= 0, coord.row < engine.blueprint.rows,
+              coord.col >= 0, coord.col < engine.blueprint.cols else { return }
+
+        if engine.twistArmed {
+            if engine.grid[coord.row][coord.col] != nil {
+                executeTwist180(at: coord, keepSelected: true)
             }
             return
         }
@@ -642,6 +756,7 @@ public struct FDToo0RootView: View {
         let moved = engine.beginSwipeTumbleOnly(at: coord, direction: direction)
         guard moved else { return }
 
+        twistCoords.removeAll()
         let dest = GridCoord(coord.row + direction.rowDelta, coord.col + direction.colDelta)
         var nextRolls: [GridCoord: TumbleDirection] = [dest: direction]
         if engine.grid[coord.row][coord.col] != nil {
@@ -680,6 +795,7 @@ public struct FDToo0RootView: View {
             try? await Task.sleep(nanoseconds: initialTumbleNs)
             if Task.isCancelled { return }
             rollDirByCoord.removeAll()
+            twistCoords.removeAll()
             guard isCascadeMode else { return }
 
             var wave = 1

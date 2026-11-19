@@ -192,9 +192,9 @@ public final class GameEngine23 {
     public private(set) var chainsFreed: Int = 0
     public private(set) var currentChain: Int = 0
     public private(set) var bestChain: Int = 0
-    public private(set) var twistCharges: Int = 1
+    public private(set) var twistCharges: Int = 3
     public private(set) var isWon: Bool = false
-    public private(set) var lastBanner: String = "Swipe any die ↑ ↓ ← → to 90°-tumble (Opposite faces = 7)"
+    public private(set) var lastBanner: String = "Tap or swipe any die ↑ ↓ ← → to 90°-tumble (Opposite faces = 7)"
     public private(set) var activeHint: SuggestedHint? = nil
     public var glowingMatchCoords: Set<GridCoord> = []
 
@@ -221,8 +221,13 @@ public final class GameEngine23 {
         self.currentLevel = startLevel
         self.blueprint = bp
         self.grid = bp.initialDice
+        self.twistCharges = (initialMode == .fdToo0) ? 3 : 2
         self.spawnRNG = SplitMix64RNG(seed: bp.seedUsed ^ 0xCAFE_BABE_0023_0418)
         loadProgress()
+    }
+
+    public func setBanner(_ message: String) {
+        self.lastBanner = message
     }
 
     // MARK: - Live Flipper Toggle (`TRU <-> N0T` from Flipper_qx.swift)
@@ -250,7 +255,7 @@ public final class GameEngine23 {
         self.chainsFreed = 0
         self.currentChain = 0
         self.bestChain = 0
-        self.twistCharges = (targetMode == .fdToo0) ? 2 : 1
+        self.twistCharges = (targetMode == .fdToo0) ? 3 : 2
         self.isWon = false
         self.selectedCoord = nil
         self.twistArmed = false

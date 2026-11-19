@@ -28,13 +28,13 @@ final class MacAppBootstrapDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.mainMenu = menuBar
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 580, height: 820),
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 840),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "FD_too0 • Joe SmoLLey 3D Spatial Deck"
-        window.minSize = NSSize(width: 520, height: 740)
+        window.minSize = NSSize(width: 540, height: 740)
         window.contentViewController = NSHostingController(rootView: FDToo0RootView())
         window.center()
         window.makeKeyAndOrderFront(nil)

@@ -20,10 +20,12 @@ public struct DieTile3DView: View {
     public let springResponse: Double
     public let hintDirection: TumbleDirection?
     public let activeRollDirection: TumbleDirection?
+    public let isInPlaceTwist: Bool
     public let rollTriggerID: Int
 
     @State private var rollAngle: Double = 0
     @State private var rollOffsetFraction: CGFloat = 0
+    @State private var twistHopScale: CGFloat = 1.0
 
     public init(
         die: BoardDie,
@@ -34,6 +36,7 @@ public struct DieTile3DView: View {
         springResponse: Double = 0.46,
         hintDirection: TumbleDirection?,
         lastTipDirection: TumbleDirection?,
+        isInPlaceTwist: Bool = false,
         rollTriggerID: Int = 0
     ) {
         self.die = die
@@ -44,6 +47,7 @@ public struct DieTile3DView: View {
         self.springResponse = springResponse
         self.hintDirection = hintDirection
         self.activeRollDirection = lastTipDirection
+        self.isInPlaceTwist = isInPlaceTwist
         self.rollTriggerID = rollTriggerID
     }
 
@@ -155,7 +159,7 @@ public struct DieTile3DView: View {
                 x: travelOffset(for: activeRollDirection, step: stepDist * rollOffsetFraction).width,
                 y: travelOffset(for: activeRollDirection, step: stepDist * rollOffsetFraction).height
             )
-            .scaleEffect(isMatchGlowing ? 1.07 : (isSelected ? 1.04 : 1.0))
+            .scaleEffect((isMatchGlowing ? 1.07 : (isSelected ? 1.04 : 1.0)) * twistHopScale)
             .animation(.easeInOut(duration: 0.18), value: isMatchGlowing)
             .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isSelected)
             .onAppear {
@@ -166,11 +170,22 @@ public struct DieTile3DView: View {
             }
         }
         .aspectRatio(1, contentMode: .fit)
-        .zIndex(rollOffsetFraction > 0.01 ? 10 : 1)
+        .zIndex((rollOffsetFraction > 0.01 || twistHopScale > 1.02) ? 10 : 1)
     }
 
     private func triggerRollAnimation() {
-        guard activeRollDirection != nil, rollTriggerID > 0 else { return }
+        guard rollTriggerID > 0 else { return }
+        if isInPlaceTwist {
+            rollAngle = -175
+            rollOffsetFraction = 0
+            twistHopScale = 1.18
+            withAnimation(.spring(response: springResponse * 1.15, dampingFraction: 0.72)) {
+                rollAngle = 0
+                twistHopScale = 1.0
+            }
+            return
+        }
+        guard activeRollDirection != nil else { return }
         rollAngle = -82
         rollOffsetFraction = 1.0
         withAnimation(.spring(response: springResponse, dampingFraction: 0.76)) {

@@ -20,8 +20,20 @@ final class FDToo0CoreTests: XCTestCase {
                 XCTAssertEqual(twisted.top, 7 - die.top)
                 XCTAssertTrue(twisted.hasValidSumSevenInvariant)
                 XCTAssertEqual(twisted.twisted180(), die)
+                // Verify two consecutive 90° East tips equal exact 180° Twist (non-singular 3D somersault midpoint)
+                XCTAssertEqual(die.tipped(.east).tipped(.east), twisted)
                 die = twisted
             }
+        }
+
+        let engine = GameEngine23(initialMode: .fdToo0, startLevel: 1)
+        XCTAssertEqual(engine.twistCharges, 3)
+        if let firstCoord = (0..<engine.blueprint.rows).flatMap({ r in (0..<engine.blueprint.cols).map { GridCoord(r, $0) } })
+            .first(where: { engine.grid[$0.row][$0.col] != nil }),
+           let beforeTop = engine.grid[firstCoord.row][firstCoord.col]?.orientation.top {
+            XCTAssertTrue(engine.beginTwist180Only(at: firstCoord))
+            XCTAssertEqual(engine.grid[firstCoord.row][firstCoord.col]?.orientation.top, 7 - beforeTop)
+            XCTAssertEqual(engine.twistCharges, 2)
         }
     }
 

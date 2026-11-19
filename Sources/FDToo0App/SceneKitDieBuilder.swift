@@ -72,13 +72,11 @@ public enum SceneKitDieBuilder {
         bodyMat.diffuse.contents = makeColor(tokens.body.0, tokens.body.1, tokens.body.2)
         bodyMat.roughness.contents = 0.28
         bodyMat.metalness.contents = 0.04
-        if isMatchGlowing {
-            bodyMat.emission.contents = makeColor(0.95, 0.78, 0.25, 1.0)
-        } else if isSelected {
-            bodyMat.emission.contents = makeColor(0.38, 0.32, 0.08, 1.0)
-        }
         box.materials = [bodyMat]
-        root.addChildNode(SCNNode(geometry: box))
+        let bodyNode = SCNNode(geometry: box)
+        bodyNode.name = "die_body"
+        root.addChildNode(bodyNode)
+        updateDieHighlight(node: root, isSelected: isSelected, isMatchGlowing: isMatchGlowing)
 
         // 2. Populate all 6 faces according to active skin (or 4-number conjugate cube override)
         if skin == .modeledPips && conjugateArchetype == nil {
@@ -124,6 +122,24 @@ public enum SceneKitDieBuilder {
         }
 
         return root
+    }
+
+    /// Updates selection and cascade-match emission in place without destroying or recreating the SCNNode,
+    /// preserving continuous 3D quaternion tumble & 180° Twist somersault animations.
+    public static func updateDieHighlight(
+        node: SCNNode,
+        isSelected: Bool,
+        isMatchGlowing: Bool
+    ) {
+        guard let bodyNode = node.childNode(withName: "die_body", recursively: false),
+              let mat = bodyNode.geometry?.firstMaterial else { return }
+        if isMatchGlowing {
+            mat.emission.contents = makeColor(0.95, 0.78, 0.25, 1.0)
+        } else if isSelected {
+            mat.emission.contents = makeColor(0.42, 0.34, 0.08, 1.0)
+        } else {
+            mat.emission.contents = makeColor(0.0, 0.0, 0.0, 1.0)
+        }
     }
 
     // MARK: - Skin 1: Sculpted 3D Recessed Casino Pips (RH000 Chirality)

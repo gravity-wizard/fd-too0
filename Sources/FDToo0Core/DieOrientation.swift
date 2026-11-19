@@ -205,7 +205,7 @@ public enum DieVisualSkin: String, CaseIterable, Codable, Sendable, Identifiable
     public var shortLabel: String {
         switch self {
         case .modeledPips:       return "RH000 Pips"
-        case .twisted45Numerals: return "45° Twisted"
+        case .twisted45Numerals: return "45° Twist"
         case .royalFaceCards:    return "FaceCards"
         }
     }
@@ -219,7 +219,7 @@ public enum DieVisualSkin: String, CaseIterable, Codable, Sendable, Identifiable
     }
 }
 
-/// Camera projection toggle honoring Twisted23's signature 3D-in-2D orthographic parlour view.
+/// Camera projection toggle honoring Twisted23's 3D-in-2D orthographic view, 3D perspective, and classic 2D Dice Trainer.
 public enum CameraProjectionStyle: String, CaseIterable, Codable, Sendable, Identifiable {
     case orthographic3DIn2D = "ortho3d"
     case perspective3D      = "persp3d"
@@ -229,9 +229,9 @@ public enum CameraProjectionStyle: String, CaseIterable, Codable, Sendable, Iden
 
     public var shortLabel: String {
         switch self {
-        case .orthographic3DIn2D: return "3D-in-2D Ortho"
-        case .perspective3D:      return "3D Perspective"
-        case .flat2D:             return "Classic 2D"
+        case .orthographic3DIn2D: return "3D Ortho"
+        case .perspective3D:      return "3D Persp"
+        case .flat2D:             return "2D Trainer"
         }
     }
 }
