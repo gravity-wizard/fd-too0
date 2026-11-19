@@ -602,10 +602,65 @@ def main():
         ),
     ]
 
-    for fname, title, sdf_fn, bmin, bmax, pitch in jobs:
+    parts_for_3mf = []
+    x_offsets = [-80.0, -46.0, -12.0, 20.0, 48.0, 76.0]
+    for (fname, title, sdf_fn, bmin, bmax, pitch), x_off in zip(jobs, x_offsets):
         verts, faces = extract_watertight_mesh(sdf_fn, bmin, bmax, pitch=pitch)
         verify_manifold_and_write_binary_stl(os.path.join(out_dir, fname), title, verts, faces)
+        part_name = fname.replace("_18mm.stl", "")
+        parts_for_3mf.append((part_name, verts, faces, x_off))
+
+    out_3mf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "FD_too0_AxleDice_CompleteSet_18mm.3mf")
+    write_3mf_assembly(out_3mf, parts_for_3mf)
+
+
+def write_3mf_assembly(path: str, parts: list):
+    import zipfile
+
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+        '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+        '  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n'
+        '</Types>\n'
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        '  <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>\n'
+        '</Relationships>\n'
+    )
+
+    chunks = [
+        '<?xml version="1.0" encoding="UTF-8"?>\n',
+        '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n',
+        '  <resources>\n',
+    ]
+    build_items = []
+    for obj_id, (name, verts, faces, x_off) in enumerate(parts, start=1):
+        chunks.append(f'    <object id="{obj_id}" name="{name}" type="model">\n      <mesh>\n        <vertices>\n')
+        v_lines = [f'          <vertex x="{v[0]:.4f}" y="{v[1]:.4f}" z="{v[2]:.4f}"/>\n' for v in verts]
+        chunks.extend(v_lines)
+        chunks.append('        </vertices>\n        <triangles>\n')
+        t_lines = [f'          <triangle v1="{t[0]}" v2="{t[1]}" v3="{t[2]}"/>\n' for t in faces]
+        chunks.extend(t_lines)
+        chunks.append('        </triangles>\n      </mesh>\n    </object>\n')
+        build_items.append(f'    <item objectid="{obj_id}" transform="1 0 0 0 1 0 0 0 1 {x_off:.2f} 0 0"/>\n')
+
+    chunks.append('  </resources>\n  <build>\n')
+    chunks.extend(build_items)
+    chunks.append('  </build>\n</model>\n')
+    model_xml = "".join(chunks)
+
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels_xml)
+        zf.writestr("3D/3dmodel.model", model_xml)
+
+    size_mb = os.path.getsize(path) / (1024 * 1024)
+    print(f"[OK] {os.path.basename(path):42s} | 6-part 3MF assembly (unit=mm) | {size_mb:.2f} MB")
 
 
 if __name__ == "__main__":
     main()
+
