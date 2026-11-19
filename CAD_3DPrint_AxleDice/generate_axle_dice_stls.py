@@ -39,46 +39,74 @@ def sdf_sphere(p: np.ndarray, center: tuple, radius: float) -> np.ndarray:
     return np.linalg.norm(p - np.array(center, dtype=np.float32), axis=-1) - radius
 
 
-def sdf_capsule_cone_x(
-    p: np.ndarray,
-    x_a: float,
-    x_b: float,
-    cy: float,
-    cz: float,
-    r_a: float,
-    r_b: float,
-) -> np.ndarray:
-    """Exact SDF of a rounded-end conical frustum (uneven capsule) along the X axis!
-    At x = x_a has spherical radius r_a; tapers linearly to spherical tip radius r_b at x = x_b.
-    """
-    px = p[..., 0] - x_a
-    py = p[..., 1] - cy
-    pz = p[..., 2] - cz
-    rho = np.hypot(py, pz)
+def smin(a: np.ndarray, b: np.ndarray, k: float = 0.25) -> np.ndarray:
+    """Smooth quadratic minimum for organic sculpted wizard drapery & beard blends."""
+    h = np.maximum(k - np.abs(a - b), 0.0) / k
+    return np.minimum(a, b) - h * h * k * 0.25
 
-    dx = x_b - x_a
-    L = abs(dx)
-    u = px * (1.0 if dx >= 0 else -1.0)  # axial distance from a -> b in [0, L]
+
+def sdf_uneven_capsule_3d(
+    p: np.ndarray, a: tuple, b: tuple, r_a: float, r_b: float
+) -> np.ndarray:
+    """Exact SDF of an uneven rounded-end conical capsule between 3D points a (r_a) and b (r_b)."""
+    ax, ay, az = a
+    bx, by, bz = b
+    dx, dy, dz = bx - ax, by - ay, bz - az
+    L = float(np.sqrt(dx * dx + dy * dy + dz * dz))
+    ux, uy, uz = dx / L, dy / L, dz / L
+
+    px = p[..., 0] - ax
+    py = p[..., 1] - ay
+    pz = p[..., 2] - az
+    u = px * ux + py * uy + pz * uz
+    rad_sq = np.maximum(0.0, px * px + py * py + pz * pz - u * u)
+    rho = np.sqrt(rad_sq)
 
     dr = r_a - r_b
-    # Note: if r_a - r_b < L, valid real uneven-capsule cone!
-    h_sq = L * L - dr * dr
-    b_len = np.sqrt(max(1e-6, h_sq))
+    b_len = float(np.sqrt(max(1e-6, L * L - dr * dr)))
     sin_a = dr / L
     cos_a = b_len / L
 
-    # Rotate (rho, u) into cone normal frame:
     q_x = rho * cos_a + u * sin_a
     q_y = -rho * sin_a + u * cos_a
 
-    # Clamp along slanted generator [0, b_len]:
     d_cap_a = np.hypot(rho, u) - r_a
     d_cap_b = np.hypot(rho, u - L) - r_b
     d_side = q_x - r_a
 
-    cond_a = q_y < 0.0
-    cond_b = q_y > b_len
-    return np.where(cond_a, d_cap_a, np.where(cond_b, d_cap_b, d_side))
+    return np.where(q_y < 0.0, d_cap_a, np.where(q_y > b_len, d_cap_b, d_side))
+
+
+def sdf_cone_frustum_3d(
+    p: np.ndarray, a: tuple, b: tuple, r0: float, r1: float
+) -> np.ndarray:
+    """Exact Capped Cone SDF along arbitrary 3D segment from a (r0) to b (r1)."""
+    ax, ay, az = a
+    bx, by, bz = b
+    dx, dy, dz = bx - ax, by - ay, bz - az
+    L = float(np.sqrt(dx * dx + dy * dy + dz * dz))
+    ux, uy, uz = dx / L, dy / L, dz / L
+
+    px = p[..., 0] - ax
+    py = p[..., 1] - ay
+    pz = p[..., 2] - az
+    u = px * ux + py * uy + pz * uz
+    q_x = np.sqrt(np.maximum(0.0, px * px + py * py + pz * pz - u * u))
+    h = 0.5 * L
+    q_y = u - h
+
+    k2_x, k2_y = r1 - r0, 2.0 * h
+    ca_x = q_x - np.minimum(q_x, np.where(q_y < 0.0, r0, r1))
+    ca_y = np.abs(q_y) - h
+
+    denom = k2_x * k2_x + k2_y * k2_y
+    t = np.clip(((r1 - q_x) * k2_x + (h - q_y) * k2_y) / denom, 0.0, 1.0)
+    cb_x = q_x - r1 + k2_x * t
+    cb_y = q_y - h + k2_y * t
+
+    s = np.where((cb_x < 0.0) & (ca_y < 0.0), -1.0, 1.0)
+    d2 = np.minimum(ca_x * ca_x + ca_y * ca_y, cb_x * cb_x + cb_y * cb_y)
+    return s * np.sqrt(np.maximum(d2, 0.0))
 
 
 def sdf_capped_cylinder_z(
@@ -96,26 +124,7 @@ def sdf_capped_cylinder_z(
 def sdf_cone_frustum_z(
     p: np.ndarray, cx: float, cy: float, z0: float, z1: float, r0: float, r1: float
 ) -> np.ndarray:
-    """Exact Capped Cone SDF along Z from (z0, r0) to (z1, r1)."""
-    q_x = np.hypot(p[..., 0] - cx, p[..., 1] - cy)
-    zc = 0.5 * (z0 + z1)
-    h = 0.5 * (z1 - z0)
-    q_y = p[..., 2] - zc
-
-    k1_x, k1_y = r1, h
-    k2_x, k2_y = r1 - r0, 2.0 * h
-
-    ca_x = q_x - np.minimum(q_x, np.where(q_y < 0.0, r0, r1))
-    ca_y = np.abs(q_y) - h
-
-    denom = k2_x * k2_x + k2_y * k2_y
-    t = np.clip(((r1 - q_x) * k2_x + (h - q_y) * k2_y) / denom, 0.0, 1.0)
-    cb_x = q_x - r1 + k2_x * t
-    cb_y = q_y - h + k2_y * t
-
-    s = np.where((cb_x < 0.0) & (ca_y < 0.0), -1.0, 1.0)
-    d2 = np.minimum(ca_x * ca_x + ca_y * ca_y, cb_x * cb_x + cb_y * cb_y)
-    return s * np.sqrt(np.maximum(d2, 0.0))
+    return sdf_cone_frustum_3d(p, (cx, cy, z0), (cx, cy, z1), r0, r1)
 
 
 def sdf_torus_on_plane(
@@ -136,6 +145,72 @@ def sdf_infinite_cyl(p: np.ndarray, center: tuple, axis: str, radius: float) -> 
     if axis == "Y":
         return np.hypot(p[..., 0] - cx, p[..., 2] - cz) - radius
     return np.hypot(p[..., 0] - cx, p[..., 1] - cy) - radius
+
+
+def sdf_gravity_wizard(
+    p: np.ndarray,
+    origin: tuple,
+    axis_dir: tuple,
+    up_dir: tuple,
+    pin_base_r: float = 3.15,
+    hat_brim_r: float = 2.92,
+    pin_tip_r: float = 0.58,
+    pin_prot: float = 6.30,
+    embed: float = 1.0,
+    include_cape_corbel: bool = True,
+) -> np.ndarray:
+    """Exact sculpted SDF of a miniature Gravity Wizard wearing a wide-brimmed pointed Wizard's Hat!"""
+    ox, oy, oz = origin
+    ax, ay, az = axis_dir
+    ux, uy, uz = up_dir
+    sx = uy * az - uz * ay
+    sy = uz * ax - ux * az
+    sz = ux * ay - uy * ax
+
+    def wpt(h_v: float, s_v: float, u_v: float) -> tuple:
+        return (
+            ox + ax * h_v + sx * s_v + ux * u_v,
+            oy + ay * h_v + sy * s_v + uy * u_v,
+            oz + az * h_v + sz * s_v + uz * u_v,
+        )
+
+    # 1. Robe Collar & Flowing Cape Corbel
+    d = sdf_cone_frustum_3d(p, wpt(-embed, 0.0, -0.12), wpt(1.45, 0.0, 0.05), pin_base_r, 1.75)
+    if include_cape_corbel:
+        d_cape = sdf_cone_frustum_3d(p, wpt(-embed, 0.0, -1.28), wpt(2.12, 0.0, -0.52), 2.02, 1.76)
+        d = smin(d, d_cape, 0.28)
+
+    # 2. Wizard Head + Flowing Pointed Beard + Mustache + Cute Round Nose
+    d_head = sdf_sphere(p, wpt(1.58, 0.0, 0.12), 1.68)
+    d = smin(d, d_head, 0.20)
+
+    d_beard = sdf_uneven_capsule_3d(p, wpt(1.55, 0.0, 1.08), wpt(0.34, 0.0, 2.24), 1.18, 0.50)
+    d_must_l = sdf_sphere(p, wpt(1.52, -0.52, 1.48), 0.52)
+    d_must_r = sdf_sphere(p, wpt(1.52, 0.52, 1.48), 0.52)
+    d_facial = smin(d_beard, np.minimum(d_must_l, d_must_r), 0.18)
+    d = smin(d, d_facial, 0.16)
+
+    d_nose = sdf_sphere(p, wpt(1.78, 0.0, 1.72), 0.55)
+    d = np.minimum(d, d_nose)
+
+    # 3. Wide Flared Wizard's Hat Brim + Hatband Ring
+    d_brim_low = sdf_cone_frustum_3d(p, wpt(1.62, 0.0, 0.18), wpt(2.18, 0.0, 0.22), 1.72, hat_brim_r)
+    d_brim_up = sdf_cone_frustum_3d(p, wpt(2.14, 0.0, 0.22), wpt(2.55, 0.0, 0.25), hat_brim_r, 2.12)
+    d_brim = np.minimum(d_brim_low, d_brim_up)
+    d = np.minimum(d, d_brim)
+
+    d_band = sdf_torus_on_plane(p, wpt(2.58, 0.0, 0.25), axis_dir, 1.92, 0.34)
+    d = np.minimum(d, d_band)
+
+    # 4. Tall Pointed Wizard's Hat Crown + Whimsical Bent Star-Tip!
+    elbow_h = max(3.6, pin_prot * 0.74)
+    tip_h = max(elbow_h + 0.9, pin_prot - pin_tip_r)
+    d_crown_low = sdf_uneven_capsule_3d(p, wpt(2.48, 0.0, 0.25), wpt(elbow_h, 0.0, 0.42), 2.02, 1.00)
+    d_crown_tip = sdf_uneven_capsule_3d(p, wpt(elbow_h, 0.0, 0.42), wpt(tip_h, 0.0, 1.02), 1.00, pin_tip_r)
+    d_crown = smin(d_crown_low, d_crown_tip, 0.22)
+    d = np.minimum(d, d_crown)
+
+    return d
 
 
 # ---------------------------------------------------------------------------
@@ -177,9 +252,10 @@ def make_die_sdf_fn(
     fillet: float = 1.4,
     pip_r: float = 1.45,
     pip_depth: float = 0.85,
-    pin_base_r: float = 3.3,
-    pin_tip_r: float = 0.85,
-    pin_prot: float = 4.8,
+    pin_base_r: float = 3.15,
+    hat_brim_r: float = 2.92,
+    pin_tip_r: float = 0.58,
+    pin_prot: float = 6.30,
     bore_r: float = 2.2,
 ):
     half = side * 0.5
@@ -190,15 +266,24 @@ def make_die_sdf_fn(
     def eval_sdf(p: np.ndarray) -> np.ndarray:
         d = sdf_rounded_box(p, center, (half, half, half), fillet)
 
-        # Union protruding self-righting conical-acorn pins on +-X
+        # Union protruding self-righting Gravity Wizards wearing pointed Wizard Hats on +-X!
         if pinned_x:
             for sign in (-1.0, 1.0):
-                x_inner = sign * (half - 1.2)
-                x_tip = sign * (half + pin_prot - pin_tip_r)
-                d_pin = sdf_capsule_cone_x(p, x_inner, x_tip, 0.0, half, pin_base_r, pin_tip_r)
-                d = np.minimum(d, d_pin)
+                d_wiz = sdf_gravity_wizard(
+                    p,
+                    origin=(sign * half, 0.0, half),
+                    axis_dir=(sign, 0.0, 0.0),
+                    up_dir=(0.0, 0.0, 1.0),
+                    pin_base_r=pin_base_r,
+                    hat_brim_r=hat_brim_r,
+                    pin_tip_r=pin_tip_r,
+                    pin_prot=pin_prot,
+                    embed=1.0,
+                    include_cape_corbel=True,
+                )
+                d = np.minimum(d, d_wiz)
 
-        # Cut recessed spherical pips & center bullseye rings
+        # Cut recessed spherical pips & center magic-circle bullseye rings
         for tag, pip_num in face_pips.items():
             n, u_ax, v_ax = face_basis(tag)
             is_pin_face = pinned_x and tag in ("+X", "-X")
@@ -210,8 +295,8 @@ def make_die_sdf_fn(
                         center[1] + n[1] * half,
                         center[2] + n[2] * half,
                     )
-                    maj_r = (pin_base_r + 0.85) if is_pin_face else (bore_r + 1.15)
-                    d_ring = sdf_torus_on_plane(p, rc, n, maj_r, 0.55)
+                    maj_r = (pin_base_r + 1.05) if is_pin_face else (bore_r + 1.15)
+                    d_ring = sdf_torus_on_plane(p, rc, n, maj_r, 0.50)
                     d = np.maximum(d, -d_ring)
                 else:
                     sc = (
@@ -222,7 +307,7 @@ def make_die_sdf_fn(
                     d_sp = sdf_sphere(p, sc, pip_r)
                     d = np.maximum(d, -d_sp)
 
-        # Cut 3 orthogonal modular axle bores (+ subtle entry chamfers)
+        # Cut 3 orthogonal modular axle bores
         if three_axis_bore:
             for ax in ("X", "Y", "Z"):
                 d_cyl = sdf_infinite_cyl(p, center, ax, bore_r)
@@ -237,37 +322,46 @@ def make_modular_pin_kit_sdf_fn(
     side: float = 18.0,
     bore_r: float = 2.2,
     clearance: float = 0.20,
-    pin_base_r: float = 3.3,
-    pin_tip_r: float = 0.85,
-    pin_prot: float = 4.8,
+    pin_base_r: float = 3.15,
+    hat_brim_r: float = 2.92,
+    pin_tip_r: float = 0.58,
+    pin_prot: float = 6.30,
 ):
-    """2x Acorn End-Caps (flat shoulder on Z=0) + 1x Stepped Connecting Rod (on Z=0)."""
+    """2x Standing Gravity Wizard Snap-Caps (flat on Z=0) + 1x Stepped Connecting Rod (on Z=0)."""
     shaft_r = bore_r - clearance
-    sock_r = 1.35 + clearance * 0.5
-    tenon_r = 1.35 - clearance * 0.5
-    tenon_h = 3.6
-    cone_h = pin_prot - pin_tip_r
+    sock_r = 1.38 + clearance * 0.5
+    tenon_r = 1.38 - clearance * 0.5
+    tenon_h = 3.5
 
     def eval_sdf(p: np.ndarray) -> np.ndarray:
         d = np.full(p.shape[:-1], 1e6, dtype=np.float32)
 
-        # Two identical self-righting Acorn Caps sitting flat on Z = 0
-        for y_off in (-5.5, 5.5):
-            cx, cy = -5.0, y_off
-            d_cone = sdf_cone_frustum_z(p, cx, cy, 0.0, cone_h, pin_base_r, pin_tip_r)
-            d_tip = sdf_sphere(p, (cx, cy, cone_h), pin_tip_r)
-            # Clip Z >= 0 cleanly so bottom sits 100% flat on bed!
-            d_cap = np.maximum(np.minimum(d_cone, d_tip), -p[..., 2])
+        # Two identical Standing Gravity Wizard Snap-Caps sitting flat on Z = 0
+        for y_off in (-6.5, 6.5):
+            cx, cy = -5.2, y_off
+            d_wiz = sdf_gravity_wizard(
+                p,
+                origin=(cx, cy, 0.0),
+                axis_dir=(0.0, 0.0, 1.0),
+                up_dir=(0.0, -1.0, 0.0),
+                pin_base_r=pin_base_r,
+                hat_brim_r=hat_brim_r,
+                pin_tip_r=pin_tip_r,
+                pin_prot=pin_prot,
+                embed=1.2,
+                include_cape_corbel=False,
+            )
+            # Clip Z >= 0 cleanly so bottom robe shoulder sits 100% flat on bed!
+            d_cap = np.maximum(d_wiz, -p[..., 2])
             d_sock = sdf_capped_cylinder_z(p, cx, cy, -0.5, tenon_h + 0.3, sock_r)
             d_cap = np.maximum(d_cap, -d_sock)
             d = np.minimum(d, d_cap)
 
-        # Stepped Connecting Rod standing at (+5.0, 0.0) on Z = 0
-        rx, ry = 5.0, 0.0
+        # Stepped Connecting Rod standing at (+5.2, 0.0) on Z = 0
+        rx, ry = 5.2, 0.0
         total_h = side + 2.0 * tenon_h
         d_core = sdf_capped_cylinder_z(p, rx, ry, 0.0, total_h, tenon_r)
         d_mid = sdf_capped_cylinder_z(p, rx, ry, tenon_h + 0.65, tenon_h + side, shaft_r)
-        # 45-deg self-supporting taper from tenon_r up to shaft_r
         d_tap = sdf_cone_frustum_z(p, rx, ry, tenon_h, tenon_h + 0.65, tenon_r, shaft_r)
         d_rod = np.minimum(d_core, np.minimum(d_mid, d_tap))
         d = np.minimum(d, d_rod)
@@ -534,39 +628,39 @@ def main():
     jobs = [
         (
             "AxleDie_Pin16_Rolls_2-3-5-4_18mm.stl",
-            "FD_too0 18mm Axle Die [Pin 1-6 -> Rolls 2,3,5,4] Support-Free",
+            "FD_too0 18mm Gravity Wizard Axle Die [Pin 1-6 -> Rolls 2,3,5,4]",
             make_die_sdf_fn(
                 face_pips={"+X": 1, "-X": 6, "+Z": 2, "-Z": 5, "-Y": 3, "+Y": 4},
                 pinned_x=True,
                 three_axis_bore=False,
             ),
-            (-15.0, -10.2, -1.0),
-            (15.0, 10.2, 19.2),
-            0.46,
+            (-16.8, -10.2, -1.0),
+            (16.8, 10.2, 19.2),
+            0.44,
         ),
         (
             "AxleDie_Pin25_Rolls_1-3-6-4_18mm.stl",
-            "FD_too0 18mm Axle Die [Pin 2-5 -> Rolls 1,3,6,4] Support-Free",
+            "FD_too0 18mm Gravity Wizard Axle Die [Pin 2-5 -> Rolls 1,3,6,4]",
             make_die_sdf_fn(
                 face_pips={"+X": 2, "-X": 5, "+Z": 1, "-Z": 6, "+Y": 3, "-Y": 4},
                 pinned_x=True,
                 three_axis_bore=False,
             ),
-            (-15.0, -10.2, -1.0),
-            (15.0, 10.2, 19.2),
-            0.46,
+            (-16.8, -10.2, -1.0),
+            (16.8, 10.2, 19.2),
+            0.44,
         ),
         (
             "AxleDie_Pin34_Rolls_1-2-6-5_18mm.stl",
-            "FD_too0 18mm Axle Die [Pin 3-4 -> Rolls 1,2,6,5] Support-Free",
+            "FD_too0 18mm Gravity Wizard Axle Die [Pin 3-4 -> Rolls 1,2,6,5]",
             make_die_sdf_fn(
                 face_pips={"+X": 3, "-X": 4, "+Z": 2, "-Z": 5, "+Y": 1, "-Y": 6},
                 pinned_x=True,
                 three_axis_bore=False,
             ),
-            (-15.0, -10.2, -1.0),
-            (15.0, 10.2, 19.2),
-            0.46,
+            (-16.8, -10.2, -1.0),
+            (16.8, 10.2, 19.2),
+            0.44,
         ),
         (
             "RegularDie_RH000_Standard_18mm.stl",
@@ -594,16 +688,16 @@ def main():
         ),
         (
             "ModularAxlePin_SnapKit_18mm.stl",
-            "FD_too0 Modular Axle Shaft + 2x Acorn Self-Righting End-Caps",
+            "FD_too0 Modular Axle Shaft + 2x Standing Gravity Wizard Caps",
             make_modular_pin_kit_sdf_fn(),
-            (-9.8, -10.2, -1.0),
-            (9.2, 10.2, 26.6),
-            0.36,
+            (-10.2, -11.2, -1.0),
+            (9.2, 11.2, 26.6),
+            0.34,
         ),
     ]
 
     parts_for_3mf = []
-    x_offsets = [-80.0, -46.0, -12.0, 20.0, 48.0, 76.0]
+    x_offsets = [-92.0, -54.0, -16.0, 18.0, 46.0, 76.0]
     for (fname, title, sdf_fn, bmin, bmax, pitch), x_off in zip(jobs, x_offsets):
         verts, faces = extract_watertight_mesh(sdf_fn, bmin, bmax, pitch=pitch)
         verify_manifold_and_write_binary_stl(os.path.join(out_dir, fname), title, verts, faces)

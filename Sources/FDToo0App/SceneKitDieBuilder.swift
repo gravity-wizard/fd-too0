@@ -380,42 +380,123 @@ public enum SceneKitDieBuilder {
         CTLineDraw(line, ctx)
     }
 
-    // MARK: - Metallic 3D Axle-Lock Skewer (`[1-6]`, `[2-5]`, `[3-4]`)
+    // MARK: - 3D Gravity Wizard Pin-Axles (`[1-6]`, `[2-5]`, `[3-4]`)
 
     public static func makeAxleSkewerNode(for axle: AxleLockAxis) -> SCNNode {
         let holder = SCNNode()
+
+        // Starlight Royal Indigo Wizard Robe & Hat material
+        let wizardRobeMat = SCNMaterial()
+        wizardRobeMat.lightingModel = .physicallyBased
+        wizardRobeMat.diffuse.contents = makeColor(0.24, 0.18, 0.62)
+        wizardRobeMat.metalness.contents = 0.35
+        wizardRobeMat.roughness.contents = 0.28
+        wizardRobeMat.emission.contents = makeColor(0.07, 0.04, 0.20)
+
+        // Enchanted Gold Hatband, Star-Tip & Internal Axle Shaft
         let goldMat = SCNMaterial()
         goldMat.lightingModel = .physicallyBased
-        goldMat.diffuse.contents = makeColor(0.92, 0.69, 0.22)
+        goldMat.diffuse.contents = makeColor(0.95, 0.74, 0.22)
         goldMat.metalness.contents = 0.90
         goldMat.roughness.contents = 0.16
         goldMat.emission.contents = makeColor(0.26, 0.17, 0.02)
 
-        // Internal through-shaft + self-righting 45° conical-acorn protruding bosses on both opposite faces
-        let rod = SCNCylinder(radius: 0.10, height: 1.50)
+        // Flowing Silver-White Wizard Beard
+        let beardMat = SCNMaterial()
+        beardMat.lightingModel = .physicallyBased
+        beardMat.diffuse.contents = makeColor(0.95, 0.96, 0.99)
+        beardMat.roughness.contents = 0.42
+
+        // Warm Wizard Face & Cute Round Nose
+        let skinMat = SCNMaterial()
+        skinMat.lightingModel = .physicallyBased
+        skinMat.diffuse.contents = makeColor(0.96, 0.80, 0.67)
+        skinMat.roughness.contents = 0.45
+
+        // Internal gold axle rod connecting the two opposite Gravity Wizards
+        let rod = SCNCylinder(radius: 0.09, height: 1.48)
         rod.materials = [goldMat]
         holder.addChildNode(SCNNode(geometry: rod))
 
-        let topCone = SCNCone(topRadius: 0.06, bottomRadius: 0.27, height: 0.42)
-        topCone.materials = [goldMat]
-        let topBoss = SCNNode(geometry: topCone)
-        topBoss.simdPosition = SIMD3<Float>(0, 0.92, 0)
-        holder.addChildNode(topBoss)
+        func makeSingleGravityWizard() -> SCNNode {
+            let wiz = SCNNode()
 
-        let botCone = SCNCone(topRadius: 0.27, bottomRadius: 0.06, height: 0.42)
-        botCone.materials = [goldMat]
-        let botBoss = SCNNode(geometry: botCone)
-        botBoss.simdPosition = SIMD3<Float>(0, -0.92, 0)
-        holder.addChildNode(botBoss)
+            // 1. Robe Collar & Shoulders emerging from cube face (y = 0.70 .. 0.84)
+            let robeGeo = SCNCone(topRadius: 0.145, bottomRadius: 0.265, height: 0.16)
+            robeGeo.materials = [wizardRobeMat]
+            let robeNode = SCNNode(geometry: robeGeo)
+            robeNode.simdPosition = SIMD3<Float>(0, 0.77, 0)
+            wiz.addChildNode(robeNode)
 
-        let capGeo = SCNSphere(radius: 0.065)
-        capGeo.materials = [goldMat]
-        let topTip = SCNNode(geometry: capGeo)
-        topTip.simdPosition = SIMD3<Float>(0, 1.13, 0)
-        let botTip = SCNNode(geometry: capGeo)
-        botTip.simdPosition = SIMD3<Float>(0, -1.13, 0)
-        holder.addChildNode(topTip)
-        holder.addChildNode(botTip)
+            // 2. Wizard Head (y = 0.88)
+            let headGeo = SCNSphere(radius: 0.138)
+            headGeo.materials = [skinMat]
+            let headNode = SCNNode(geometry: headGeo)
+            headNode.simdPosition = SIMD3<Float>(0, 0.88, 0.01)
+            wiz.addChildNode(headNode)
+
+            // 3. Lush Flowing Pointed Wizard Beard cascading down front (+Z) + Cute Nose
+            let beardGeo = SCNCone(topRadius: 0.025, bottomRadius: 0.105, height: 0.20)
+            beardGeo.materials = [beardMat]
+            let beardNode = SCNNode(geometry: beardGeo)
+            beardNode.simdPosition = SIMD3<Float>(0, 0.80, 0.125)
+            beardNode.simdEulerAngles = SIMD3<Float>(.pi * 0.82, 0, 0)
+            wiz.addChildNode(beardNode)
+
+            let noseGeo = SCNSphere(radius: 0.044)
+            noseGeo.materials = [skinMat]
+            let noseNode = SCNNode(geometry: noseGeo)
+            noseNode.simdPosition = SIMD3<Float>(0, 0.895, 0.145)
+            wiz.addChildNode(noseNode)
+
+            // 4. Wide Flared Wizard's Hat Brim (y = 0.945) + Golden Hatband Torus
+            let brimLower = SCNCone(topRadius: 0.245, bottomRadius: 0.145, height: 0.045)
+            brimLower.materials = [wizardRobeMat]
+            let brimLowerNode = SCNNode(geometry: brimLower)
+            brimLowerNode.simdPosition = SIMD3<Float>(0, 0.935, 0.01)
+            wiz.addChildNode(brimLowerNode)
+
+            let brimUpper = SCNCone(topRadius: 0.175, bottomRadius: 0.245, height: 0.035)
+            brimUpper.materials = [wizardRobeMat]
+            let brimUpperNode = SCNNode(geometry: brimUpper)
+            brimUpperNode.simdPosition = SIMD3<Float>(0, 0.972, 0.01)
+            wiz.addChildNode(brimUpperNode)
+
+            let bandGeo = SCNTorus(ringRadius: 0.162, pipeRadius: 0.026)
+            bandGeo.materials = [goldMat]
+            let bandNode = SCNNode(geometry: bandGeo)
+            bandNode.simdPosition = SIMD3<Float>(0, 0.992, 0.01)
+            wiz.addChildNode(bandNode)
+
+            // 5. Tall Pointed Wizard's Hat Crown + Whimsical Bent Tip + Golden Star Orb!
+            let crownGeo = SCNCone(topRadius: 0.078, bottomRadius: 0.168, height: 0.22)
+            crownGeo.materials = [wizardRobeMat]
+            let crownNode = SCNNode(geometry: crownGeo)
+            crownNode.simdPosition = SIMD3<Float>(0, 1.095, 0.015)
+            wiz.addChildNode(crownNode)
+
+            let tipConeGeo = SCNCone(topRadius: 0.036, bottomRadius: 0.078, height: 0.13)
+            tipConeGeo.materials = [wizardRobeMat]
+            let tipConeNode = SCNNode(geometry: tipConeGeo)
+            tipConeNode.simdPosition = SIMD3<Float>(0, 1.255, 0.045)
+            tipConeNode.simdEulerAngles = SIMD3<Float>(-0.34, 0, 0)
+            wiz.addChildNode(tipConeNode)
+
+            let starOrbGeo = SCNSphere(radius: 0.042)
+            starOrbGeo.materials = [goldMat]
+            let starOrbNode = SCNNode(geometry: starOrbGeo)
+            starOrbNode.simdPosition = SIMD3<Float>(0, 1.318, 0.068)
+            wiz.addChildNode(starOrbNode)
+
+            return wiz
+        }
+
+        let topWizard = makeSingleGravityWizard()
+        holder.addChildNode(topWizard)
+
+        let bottomWizard = makeSingleGravityWizard()
+        bottomWizard.simdEulerAngles = SIMD3<Float>(.pi, 0, 0)
+        holder.addChildNode(bottomWizard)
 
         switch axle {
         case .free24:

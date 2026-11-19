@@ -138,6 +138,113 @@ def add_or_union(tbm, accum_body, new_body):
     return accum_body
 
 
+def build_gravity_wizard_temp_body(
+    tbm: adsk.fusion.TemporaryBRepManager,
+    origin_mm: tuple,
+    axis_dir: tuple,
+    up_dir: tuple,
+    pin_base_rad_mm: float,
+    hat_brim_rad_mm: float,
+    pin_tip_rad_mm: float,
+    pin_protrusion_mm: float,
+    embed_mm: float = 0.85,
+    include_cape_corbel: bool = True,
+):
+    """Sculpts a miniature 3D B-Rep Gravity Wizard wearing a wide-brimmed pointed Wizard's Hat!
+    - Local coords (h, s, u) in mm:
+        h : distance outward along pin-axle from cube face (or Z=0 base)
+        s : lateral cheek axis (up x axis)
+        u : face/beard/hat-curl direction (+Z on horizontal dice for crisp top-facing detail!)
+    """
+    ox, oy, oz = origin_mm
+    ax, ay, az = axis_dir
+    ux, uy, uz = up_dir
+    # Lateral unit vector s = up x axis
+    sx = uy * az - uz * ay
+    sy = uz * ax - ux * az
+    sz = ux * ay - uy * ax
+
+    def wpt(h_val: float, s_val: float, u_val: float) -> adsk.core.Point3D:
+        return adsk.core.Point3D.create(
+            mm(ox + ax * h_val + sx * s_val + ux * u_val),
+            mm(oy + ay * h_val + sy * s_val + uy * u_val),
+            mm(oz + az * h_val + sz * s_val + uz * u_val),
+        )
+
+    wiz = None
+
+    # 1. Starlight Robe Shoulders & Collar emerging from die face
+    robe = tbm.createCylinderOrCone(
+        wpt(-embed_mm, 0.0, -0.12), mm(pin_base_rad_mm),
+        wpt(1.45, 0.0, 0.05), mm(1.75),
+    )
+    wiz = add_or_union(tbm, wiz, robe)
+
+    # 2. Support-Free Flowing Gravity Cloak Corbel underneath (-u) for horizontal FDM printing
+    if include_cape_corbel:
+        cape = tbm.createCylinderOrCone(
+            wpt(-embed_mm, 0.0, -1.28), mm(2.02),
+            wpt(2.12, 0.0, -0.52), mm(1.76),
+        )
+        wiz = add_or_union(tbm, wiz, cape)
+
+    # 3. Gravity Wizard Head
+    head = tbm.createSphere(wpt(1.58, 0.0, 0.12), mm(1.68))
+    wiz = add_or_union(tbm, wiz, head)
+
+    # 4. Lush Flowing Pointed Wizard Beard + Mustache Cheeks + Cute Round Nose (+u)
+    beard_cone = tbm.createCylinderOrCone(
+        wpt(1.55, 0.0, 1.08), mm(1.18),
+        wpt(0.38, 0.0, 2.20), mm(0.46),
+    )
+    beard_tip = tbm.createSphere(wpt(0.34, 0.0, 2.24), mm(0.50))
+    must_l = tbm.createSphere(wpt(1.52, -0.52, 1.48), mm(0.52))
+    must_r = tbm.createSphere(wpt(1.52, 0.52, 1.48), mm(0.52))
+    nose = tbm.createSphere(wpt(1.78, 0.0, 1.72), mm(0.55))
+    for part in (beard_cone, beard_tip, must_l, must_r, nose):
+        wiz = add_or_union(tbm, wiz, part)
+
+    # 5. Wide Flared Wizard's Hat Brim (45-deg self-supporting lower bevel + overlapping rim + upper taper)
+    brim_low = tbm.createCylinderOrCone(
+        wpt(1.62, 0.0, 0.18), mm(1.72),
+        wpt(2.16, 0.0, 0.22), mm(hat_brim_rad_mm),
+    )
+    brim_rim = tbm.createCylinderOrCone(
+        wpt(2.10, 0.0, 0.22), mm(hat_brim_rad_mm),
+        wpt(2.26, 0.0, 0.23), mm(hat_brim_rad_mm),
+    )
+    brim_up = tbm.createCylinderOrCone(
+        wpt(2.20, 0.0, 0.23), mm(hat_brim_rad_mm),
+        wpt(2.55, 0.0, 0.25), mm(2.12),
+    )
+    hatband = tbm.createTorus(
+        wpt(2.58, 0.0, 0.25),
+        adsk.core.Vector3D.create(ax, ay, az),
+        mm(1.92),
+        mm(0.34),
+    )
+    for part in (brim_low, brim_rim, brim_up, hatband):
+        wiz = add_or_union(tbm, wiz, part)
+
+    # 6. Tall Pointed Wizard's Hat Crown + Whimsical Bent Tip + Star Orb!
+    elbow_h = max(3.6, pin_protrusion_mm * 0.74)
+    tip_h = max(elbow_h + 0.9, pin_protrusion_mm - pin_tip_rad_mm)
+    crown_low = tbm.createCylinderOrCone(
+        wpt(2.42, 0.0, 0.25), mm(2.04),
+        wpt(elbow_h, 0.0, 0.42), mm(0.98),
+    )
+    crown_elbow = tbm.createSphere(wpt(elbow_h - 0.03, 0.0, 0.42), mm(1.04))
+    crown_tip = tbm.createCylinderOrCone(
+        wpt(elbow_h - 0.06, 0.0, 0.40), mm(0.96),
+        wpt(tip_h, 0.0, 1.00), mm(pin_tip_rad_mm * 0.90),
+    )
+    star_orb = tbm.createSphere(wpt(tip_h + 0.04, 0.0, 1.02), mm(pin_tip_rad_mm))
+    for part in (crown_low, crown_elbow, crown_tip, star_orb):
+        wiz = add_or_union(tbm, wiz, part)
+
+    return wiz
+
+
 def build_die_component(
     root_comp: adsk.fusion.Component,
     cfg: dict,
@@ -147,6 +254,7 @@ def build_die_component(
     pip_rad_mm: float,
     pip_depth_mm: float,
     pin_base_rad_mm: float,
+    hat_brim_rad_mm: float,
     pin_tip_rad_mm: float,
     pin_protrusion_mm: float,
     bore_rad_mm: float,
@@ -156,11 +264,14 @@ def build_die_component(
     comp = occ.component
     comp.name = cfg["name"]
 
-    cx = mm(center_xy_mm[0])
-    cy = mm(center_xy_mm[1])
-    cz = mm(side_mm * 0.5)  # Bottom face rests flat on Z = 0!
+    cx_mm, cy_mm = center_xy_mm
+    cz_mm = side_mm * 0.5
+    cx = mm(cx_mm)
+    cy = mm(cy_mm)
+    cz = mm(cz_mm)  # Bottom face rests flat on Z = 0!
     side = mm(side_mm)
     half = side * 0.5
+    half_mm = side_mm * 0.5
 
     # 1. Base Cube Body
     obb = adsk.core.OrientedBoundingBox3D.create(
@@ -190,21 +301,23 @@ def build_die_component(
     f_in.addConstantRadiusEdgeSet(edge_col, adsk.core.ValueInput.createByReal(mm(fillet_mm)), True)
     fillets.add(f_in)
 
-    # 3. Optional Protruding Self-Righting 45-deg Conical-Acorn Pin-Axles along +-X
+    # 3. Protruding Self-Righting Gravity Wizard Pin-Axles wearing Pointed Wizard Hats along +-X
     if cfg["pinned_x"]:
         join_temp = None
-        r_base = mm(pin_base_rad_mm)
-        r_tip = mm(pin_tip_rad_mm)
-        prot = mm(pin_protrusion_mm)
-        embed = mm(0.8)  # Anchor 0.8mm inside cube wall for clean boolean union
-
         for sign in (-1.0, 1.0):
-            p_inner = adsk.core.Point3D.create(cx + sign * (half - embed), cy, cz)
-            p_cone_end = adsk.core.Point3D.create(cx + sign * (half + prot - r_tip), cy, cz)
-            cone = tbm.createCylinderOrCone(p_inner, r_base, p_cone_end, r_tip)
-            tip_sphere = tbm.createSphere(p_cone_end, r_tip)
-            join_temp = add_or_union(tbm, join_temp, cone)
-            join_temp = add_or_union(tbm, join_temp, tip_sphere)
+            wiz_temp = build_gravity_wizard_temp_body(
+                tbm=tbm,
+                origin_mm=(cx_mm + sign * half_mm, cy_mm, cz_mm),
+                axis_dir=(sign, 0.0, 0.0),
+                up_dir=(0.0, 0.0, 1.0),
+                pin_base_rad_mm=pin_base_rad_mm,
+                hat_brim_rad_mm=hat_brim_rad_mm,
+                pin_tip_rad_mm=pin_tip_rad_mm,
+                pin_protrusion_mm=pin_protrusion_mm,
+                embed_mm=0.85,
+                include_cape_corbel=True,
+            )
+            join_temp = add_or_union(tbm, join_temp, wiz_temp)
 
         bf_join = comp.features.baseFeatures.add()
         bf_join.startEdit()
@@ -221,10 +334,9 @@ def build_die_component(
 
     # 4. Recessed Spherical Casino Pips + Optional 3-Axis Modular Through-Bores
     cut_temp = None
-    d_pip = mm(side_mm * 0.275)  # +-4.95mm on 18mm die -> clears central 6.6mm boss cleanly!
+    d_pip = mm(side_mm * 0.275)  # +-4.95mm on 18mm die -> clears central Gravity Wizard base cleanly!
     r_pip = mm(pip_rad_mm)
     depth = mm(pip_depth_mm)
-    # Sphere center offset outside face so cap depth == pip_depth_mm:
     sphere_out = r_pip - depth
 
     for face_tag, pip_num in cfg["face_pips"].items():
@@ -235,15 +347,15 @@ def build_die_component(
         for (du, dv) in pip_2d_offsets(pip_num, d_pip):
             is_center_pip = abs(du) < 1e-6 and abs(dv) < 1e-6
             if is_center_pip and (is_pinned_face or is_bored_face):
-                # Carve a crisp annular bullseye moat around the pin/bore so 1, 3, 5 remain 100% readable!
+                # Carve a crisp magic-circle bullseye moat around the wizard/bore so 1, 3, 5 stay 100% readable!
                 ring_center = adsk.core.Point3D.create(
                     cx + n[0] * half,
                     cy + n[1] * half,
                     cz + n[2] * half,
                 )
                 ring_axis = adsk.core.Vector3D.create(n[0], n[1], n[2])
-                major_r = mm(pin_base_rad_mm + 0.85) if is_pinned_face else mm(bore_rad_mm + 1.15)
-                torus = tbm.createTorus(ring_center, ring_axis, major_r, mm(0.55))
+                major_r = mm(pin_base_rad_mm + 1.05) if is_pinned_face else mm(bore_rad_mm + 1.15)
+                torus = tbm.createTorus(ring_center, ring_axis, major_r, mm(0.50))
                 cut_temp = add_or_union(tbm, cut_temp, torus)
             else:
                 px = cx + n[0] * (half + sphere_out) + u_ax[0] * du + v_ax[0] * dv
@@ -293,61 +405,65 @@ def build_modular_snap_pin_kit(
     bore_rad_mm: float,
     clearance_mm: float,
     pin_base_rad_mm: float,
+    hat_brim_rad_mm: float,
     pin_tip_rad_mm: float,
     pin_protrusion_mm: float,
 ):
-    """Builds the removable Axle Pin + Press-Fit Acorn Cap upright on Z=0 for zero-support printing."""
+    """Builds 2x Standing Gravity Wizard Snap-Caps (flat on Z=0) + 1x Stepped Connecting Rod."""
     tbm = adsk.fusion.TemporaryBRepManager.get()
     occ = root_comp.occurrences.addNewComponent(adsk.core.Matrix3D.create())
     comp = occ.component
-    comp.name = "6_ModularPin_Shaft_and_Cap"
+    comp.name = "6_ModularPin_GravityWizards"
 
-    cx = mm(center_xy_mm[0])
-    cy = mm(center_xy_mm[1])
+    cx_mm, cy_mm = center_xy_mm
+    cx = mm(cx_mm)
+    cy = mm(cy_mm)
     shaft_r = mm(bore_rad_mm - clearance_mm)
-    r_base = mm(pin_base_rad_mm)
-    r_tip = mm(pin_tip_rad_mm)
-    prot = mm(pin_protrusion_mm)
     die_len = mm(side_mm)
 
-    # Part A: Pin with integrated bottom acorn head (printed shaft-up from flat collar shoulder or tip-up?
-    # Wait: printing collar-down with shaft pointing +Z and a separate bottom acorn cap pointing +Z
-    # gives TWO flat Z=0 bases and ZERO supports!)
-    # Piece 1 (at cy - 8mm): Collar flange on Z=0 + self-righting cone pointing +Z? No, shaft goes into die,
-    # cone sticks OUT of die! Put the flat inner shoulder face on Z=0:
-    #   - Piece 1 (Stepped Acorn Cap + Full Through-Tenon? No:
-    #     Sub-piece 1A: Through-Shaft with integrated Socket on top? Even simpler:
-    #     Two identical Acorn Caps (flat shoulder on Z=0, 45-deg self-righting acorn cone pointing +Z,
-    #     with a central blind socket) + One flat-lying Octagonal/Chamfered Connecting Rod on Z=0!)
-    # CHECK THAT 3-PIECE ZERO-SUPPORT DESIGN:
-    #   - 2x Identical Acorn End-Caps sitting FLAT on their inner shoulder at Z=0 (cone points UP +Z,
-    #     blind socket opens from Z=0 upward -> 45-deg cone outside, short 3.6mm socket inside)!
-    #   - 1x Connecting Rod printed vertically (with 8mm brim) or flat-bottomed D-shaft on Z=0!
-    cap_socket_r = mm(2.0 + clearance_mm * 0.5)
-    cap_socket_h = mm(4.2)
+    cap_socket_r = mm(1.38 + clearance_mm * 0.5)
+    cap_socket_h = mm(3.8)
 
     kit_temp = None
-    for idx, y_off in enumerate((-8.0, 8.0)):
-        py = cy + mm(y_off)
-        cone_h = prot - r_tip
-        cone = tbm.createCylinderOrCone(
-            adsk.core.Point3D.create(cx - mm(6.0), py, 0.0), r_base,
-            adsk.core.Point3D.create(cx - mm(6.0), py, cone_h), r_tip
+    for y_off in (-7.5, 7.5):
+        wiz_x_mm = cx_mm - 6.0
+        wiz_y_mm = cy_mm + y_off
+        wiz = build_gravity_wizard_temp_body(
+            tbm=tbm,
+            origin_mm=(wiz_x_mm, wiz_y_mm, 0.0),
+            axis_dir=(0.0, 0.0, 1.0),
+            up_dir=(0.0, -1.0, 0.0),
+            pin_base_rad_mm=pin_base_rad_mm,
+            hat_brim_rad_mm=hat_brim_rad_mm,
+            pin_tip_rad_mm=pin_tip_rad_mm,
+            pin_protrusion_mm=pin_protrusion_mm,
+            embed_mm=1.2,
+            include_cape_corbel=False,
         )
-        tip = tbm.createSphere(adsk.core.Point3D.create(cx - mm(6.0), py, cone_h), r_tip)
-        tbm.booleanOperation(cone, tip, adsk.fusion.BooleanTypes.UnionBooleanType)
+        # Trim anything below Z = 0 cleanly so the wizard's robe base sits 100% flat on the print bed!
+        trim_box = tbm.createBox(
+            adsk.core.OrientedBoundingBox3D.create(
+                adsk.core.Point3D.create(mm(wiz_x_mm), mm(wiz_y_mm), -mm(5.0)),
+                adsk.core.Vector3D.create(1, 0, 0),
+                adsk.core.Vector3D.create(0, 1, 0),
+                mm(16.0),
+                mm(16.0),
+                mm(10.0),
+            )
+        )
+        tbm.booleanOperation(wiz, trim_box, adsk.fusion.BooleanTypes.DifferenceBooleanType)
 
         sock = tbm.createCylinderOrCone(
-            adsk.core.Point3D.create(cx - mm(6.0), py, -mm(0.1)), cap_socket_r,
-            adsk.core.Point3D.create(cx - mm(6.0), py, cap_socket_h), cap_socket_r
+            adsk.core.Point3D.create(mm(wiz_x_mm), mm(wiz_y_mm), -mm(0.2)), cap_socket_r,
+            adsk.core.Point3D.create(mm(wiz_x_mm), mm(wiz_y_mm), cap_socket_h), cap_socket_r
         )
-        tbm.booleanOperation(cone, sock, adsk.fusion.BooleanTypes.DifferenceBooleanType)
-        kit_temp = add_or_union(tbm, kit_temp, cone)
+        tbm.booleanOperation(wiz, sock, adsk.fusion.BooleanTypes.DifferenceBooleanType)
+        kit_temp = add_or_union(tbm, kit_temp, wiz)
 
-    # Connecting Rod + Tenon Ends (standing on Z=0; total height = 18 + 2*4.0 = 26.0mm)
+    # Stepped Connecting Rod standing at (+6.0 mm, 0) on Z = 0
     rod_x = cx + mm(6.0)
-    tenon_r = mm(2.0 - clearance_mm * 0.5)
-    tenon_h = mm(4.0)
+    tenon_r = mm(1.38 - clearance_mm * 0.5)
+    tenon_h = mm(3.5)
     rod_total_h = die_len + 2.0 * tenon_h
 
     tenon_full = tbm.createCylinderOrCone(
@@ -355,14 +471,12 @@ def build_modular_snap_pin_kit(
         adsk.core.Point3D.create(rod_x, cy, rod_total_h), tenon_r
     )
     mid_collar = tbm.createCylinderOrCone(
-        adsk.core.Point3D.create(rod_x, cy, tenon_h), shaft_r,
+        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.65)), shaft_r,
         adsk.core.Point3D.create(rod_x, cy, tenon_h + die_len), shaft_r
     )
-    # 45-deg print-friendly chamfer between lower tenon and mid_collar so ZERO overhang on Z!
-    chamfer_h = max(mm(0.2), shaft_r - tenon_r)
     lower_taper = tbm.createCylinderOrCone(
-        adsk.core.Point3D.create(rod_x, cy, tenon_h - chamfer_h), tenon_r,
-        adsk.core.Point3D.create(rod_x, cy, tenon_h), shaft_r
+        adsk.core.Point3D.create(rod_x, cy, tenon_h), tenon_r,
+        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.65)), shaft_r
     )
     tbm.booleanOperation(tenon_full, mid_collar, adsk.fusion.BooleanTypes.UnionBooleanType)
     tbm.booleanOperation(tenon_full, lower_taper, adsk.fusion.BooleanTypes.UnionBooleanType)
@@ -384,7 +498,7 @@ def run(context):
         design = adsk.fusion.Design.cast(app.activeProduct)
         design.designType = adsk.fusion.DesignTypes.ParametricDesignType
         root = design.rootComponent
-        root.name = "FD_too0_AxleDice_18mm_Set"
+        root.name = "FD_too0_GravityWizard_AxleDice_18mm"
 
         # Register reference User Parameters in Fusion 360 (Modify -> Change Parameters)
         params = design.userParameters
@@ -393,9 +507,10 @@ def run(context):
             ("EdgeFillet", "1.4 mm", "12-edge parlour bevel radius"),
             ("PipRadius", "1.45 mm", "Recessed RH000 pip sphere radius"),
             ("PipDepth", "0.85 mm", "Recessed pip depth"),
-            ("PinBaseRadius", "3.3 mm", "Self-supporting 45-deg axle boss base radius"),
-            ("PinTipRadius", "0.85 mm", "Rounded unstable acorn tip radius"),
-            ("PinProtrusion", "4.8 mm", "Protrusion past pinned faces (prevents landing face-up)"),
+            ("WizardRobeRadius", "3.15 mm", "Gravity Wizard robe base radius on pinned face"),
+            ("WizardHatBrimRadius", "2.92 mm", "Wide flared Wizard Hat brim radius"),
+            ("WizardHatTipRadius", "0.58 mm", "Pointed Wizard Hat star-orb tip radius (<2.2 deg tip-off!)"),
+            ("WizardHeight", "6.30 mm", "Gravity Wizard total height past cube face"),
             ("ModularBoreRadius", "2.2 mm", "Through-bore radius for modular 3-axis die"),
             ("PrintClearance", "0.20 mm", "FDM press/slip clearance"),
         ]
@@ -406,20 +521,21 @@ def run(context):
         fillet_mm = 1.4
         pip_rad_mm = 1.45
         pip_depth_mm = 0.85
-        pin_base_rad_mm = 3.3
-        pin_tip_rad_mm = 0.85
-        pin_protrusion_mm = 4.8
+        pin_base_rad_mm = 3.15
+        hat_brim_rad_mm = 2.92
+        pin_tip_rad_mm = 0.58
+        pin_protrusion_mm = 6.30
         bore_rad_mm = 2.2
         clearance_mm = 0.20
 
         # Arrange the 6 components cleanly in a 3x2 grid on the XY print bed (Z >= 0)
         grid_xy = [
-            (-34.0, 16.0),
+            (-38.0, 16.0),
             (0.0, 16.0),
-            (34.0, 16.0),
-            (-34.0, -16.0),
+            (38.0, 16.0),
+            (-38.0, -16.0),
             (0.0, -16.0),
-            (34.0, -16.0),
+            (38.0, -16.0),
         ]
 
         for idx, cfg in enumerate(DIE_ORIENTATION_CONFIGS):
@@ -432,6 +548,7 @@ def run(context):
                 pip_rad_mm=pip_rad_mm,
                 pip_depth_mm=pip_depth_mm,
                 pin_base_rad_mm=pin_base_rad_mm,
+                hat_brim_rad_mm=hat_brim_rad_mm,
                 pin_tip_rad_mm=pin_tip_rad_mm,
                 pin_protrusion_mm=pin_protrusion_mm,
                 bore_rad_mm=bore_rad_mm,
@@ -444,19 +561,21 @@ def run(context):
             bore_rad_mm=bore_rad_mm,
             clearance_mm=clearance_mm,
             pin_base_rad_mm=pin_base_rad_mm,
+            hat_brim_rad_mm=hat_brim_rad_mm,
             pin_tip_rad_mm=pin_tip_rad_mm,
             pin_protrusion_mm=pin_protrusion_mm,
         )
 
         app.activeViewport.fit()
         ui.messageBox(
-            "FD_too0 AxLe Dice Set Generated!\n\n"
-            "• 3 Monolithic Support-Free AxLe Dice ([1-6], [2-5], [3-4])\n"
+            "🧙‍♂️ FD_too0 Gravity Wizard AxLe Dice Generated!\n\n"
+            "• 3 Monolithic Support-Free Gravity Wizard AxLe Dice ([1-6], [2-5], [3-4])\n"
             "• 1 Matching 18mm ReguLar RH000 Die\n"
-            "• 1 Modular 3-Axis Core Die + Snap Acorn Pin Kit\n\n"
-            "All parts sit flat on Z = 0 with <=45° slopes for zero-support 3D printing.\n"
-            "Use File -> 3D Print (or right-click any Component -> Save As Mesh) to slice!"
+            "• 1 Modular 3-Axis Core Die + 2 Standing Gravity Wizard Snap-Caps\n\n"
+            "Each wizard wears a wide-brimmed pointed Wizard's Hat (<2.2° tip-off angle)\n"
+            "so pinned faces NEVER land face-up! Right-click any Component -> Save As Mesh to slice."
         )
     except Exception:
         if ui:
             ui.messageBox("AxleDiceGenerator failed:\n{}".format(traceback.format_exc()))
+
