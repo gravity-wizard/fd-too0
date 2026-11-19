@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 public struct WorldAtlasSheet: View {
     @Bindable var engine: GameEngine23
@@ -119,14 +121,24 @@ public struct RulesInspectorSheet: View {
                             .font(.subheadline)
                     }
 
-                    GroupBox("4. Rabbit 🐇 • TurtLe 🐢 • SnaiL 🐌 Speeds") {
-                        Text("Pick your pace anytime in the Speed Bar: Rabbit 🐇 (snappy 185ms tumbles & 1× arcade Time Par), TurtLe 🐢 (default 460ms tumbles, glowing 3+ match preview & 2× Time Par), or SnaiL 🐌 (slow-mo 900ms Sum-7 study & 4× Zen Time Par).")
+                    GroupBox("4. Three 3D Skins & Learned-Player 24-State Geometry") {
+                        Text("Tap the Skin pill anytime to swap between Modeled RH000 Pips, 45° Twisted Numerals (whose crowns point into shared vertices V_123 and V_654 so all 24 SO(3) states are uniquely readable from Top!), and Royal FaceCards {A♠, K♥, Q♦, 10♣, One-Eyed Jack J♠, Two-Eyed Jack J♦}.")
+                            .font(.subheadline)
+                    }
+
+                    GroupBox("5. AxLe-Locked Yahtzee Parlour") {
+                        Text("Play Mysterious-Axis mode (skewers [1-6], [2-5], [3-4] lock each die onto a 4-face ring at exact 25% odds, with Two-Eyed Jack Wilds & One-Eyed Jack Axle-Breakers!) or Physical 4-Number Conjugate Cubes (α {1,1,2,2,3,4} + β {3,3,4,4,1,2} giving exact 3/12 = 25% uniform pool odds).")
+                            .font(.subheadline)
+                    }
+
+                    GroupBox("6. HoLy SmoLLey & z404 M00N Buggy 2-Pip RWD Drift") {
+                        Text("Explore Joe SmoLLey's evacuated gravity-train tunnels through HoLy Earth (38m 10s PREM core vs 42.2m uniform SHM & Polar 89.9°S zero-Coriolis axis), HoLy M00N (54.2m), and OTEC-powered abyssal HyperLoops—then drift the z404 M00N Buggy in 2-Pip RWD Overdrive!")
                             .font(.subheadline)
                     }
                 }
                 .padding()
             }
-            .navigationTitle("How to Play")
+            .navigationTitle("Spatial Deck Guide")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Let's Roll") { dismiss() }

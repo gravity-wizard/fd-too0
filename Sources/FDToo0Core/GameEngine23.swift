@@ -17,6 +17,10 @@ public struct GridCoord: Equatable, Hashable, Codable, Sendable {
         self.row = row
         self.col = col
     }
+    public init(row: Int, col: Int) {
+        self.row = row
+        self.col = col
+    }
 }
 
 public struct SuggestedHint: Equatable, Sendable {
@@ -197,6 +201,8 @@ public final class GameEngine23 {
     public var selectedCoord: GridCoord? = nil
     public var twistArmed: Bool = false
     public var appearanceMode: BoardAppearanceMode = .dark
+    public var visualSkin: DieVisualSkin = .modeledPips
+    public var cameraProjection: CameraProjectionStyle = .orthographic3DIn2D
     public var paceSpeed: PaceSpeed = .turtle {
         didSet { saveProgress() }
     }
@@ -565,7 +571,7 @@ public final class GameEngine23 {
         if blueprintHasPocket {
             let centerCol = cols / 2
             if blueprint.pads[0][centerCol] != .hole && grid[0][centerCol] == nil {
-                reservedPocket = GridCoord(row: 0, col: centerCol)
+                reservedPocket = GridCoord(0, centerCol)
             } else {
                 var bestDist = Int.max
                 for rr in 0..<rows {
@@ -574,7 +580,7 @@ public final class GameEngine23 {
                             let dist = rr * 10 + abs(cc - centerCol)
                             if dist < bestDist {
                                 bestDist = dist
-                                reservedPocket = GridCoord(row: rr, col: cc)
+                                reservedPocket = GridCoord(rr, cc)
                             }
                         }
                     }
@@ -585,7 +591,7 @@ public final class GameEngine23 {
         for c in 0..<cols {
             var writeRow = writeRows[c]
             while writeRow >= 0 {
-                let coord = GridCoord(row: writeRow, col: c)
+                let coord = GridCoord(writeRow, c)
                 if blueprint.pads[writeRow][c] != .hole
                     && grid[writeRow][c] == nil
                     && coord != reservedPocket {
