@@ -329,9 +329,10 @@ def make_modular_pin_kit_sdf_fn(
 ):
     """2x Standing Gravity Wizard Snap-Caps (flat on Z=0) + 1x Stepped Connecting Rod (on Z=0)."""
     shaft_r = bore_r - clearance
-    sock_r = 1.38 + clearance * 0.5
-    tenon_r = 1.38 - clearance * 0.5
-    tenon_h = 3.5
+    tenon_nom = 1.05
+    sock_r = tenon_nom + clearance * 0.5
+    tenon_r = tenon_nom - clearance * 0.5
+    tenon_h = 2.15
 
     def eval_sdf(p: np.ndarray) -> np.ndarray:
         d = np.full(p.shape[:-1], 1e6, dtype=np.float32)
@@ -353,7 +354,7 @@ def make_modular_pin_kit_sdf_fn(
             )
             # Clip Z >= 0 cleanly so bottom robe shoulder sits 100% flat on bed!
             d_cap = np.maximum(d_wiz, -p[..., 2])
-            d_sock = sdf_capped_cylinder_z(p, cx, cy, -0.5, tenon_h + 0.3, sock_r)
+            d_sock = sdf_capped_cylinder_z(p, cx, cy, -0.5, tenon_h + 0.20, sock_r)
             d_cap = np.maximum(d_cap, -d_sock)
             d = np.minimum(d, d_cap)
 
@@ -361,8 +362,8 @@ def make_modular_pin_kit_sdf_fn(
         rx, ry = 5.2, 0.0
         total_h = side + 2.0 * tenon_h
         d_core = sdf_capped_cylinder_z(p, rx, ry, 0.0, total_h, tenon_r)
-        d_mid = sdf_capped_cylinder_z(p, rx, ry, tenon_h + 0.65, tenon_h + side, shaft_r)
-        d_tap = sdf_cone_frustum_z(p, rx, ry, tenon_h, tenon_h + 0.65, tenon_r, shaft_r)
+        d_mid = sdf_capped_cylinder_z(p, rx, ry, tenon_h + 0.85, tenon_h + side, shaft_r)
+        d_tap = sdf_cone_frustum_z(p, rx, ry, tenon_h, tenon_h + 0.85, tenon_r, shaft_r)
         d_rod = np.minimum(d_core, np.minimum(d_mid, d_tap))
         d = np.minimum(d, d_rod)
         return d

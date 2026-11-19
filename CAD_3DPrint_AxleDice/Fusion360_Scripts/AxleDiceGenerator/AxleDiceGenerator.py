@@ -204,23 +204,23 @@ def build_gravity_wizard_temp_body(
     for part in (beard_cone, beard_tip, must_l, must_r, nose):
         wiz = add_or_union(tbm, wiz, part)
 
-    # 5. Wide Flared Wizard's Hat Brim (45-deg self-supporting lower bevel + overlapping rim + upper taper)
+    # 5. Wide Flared Wizard's Hat Brim (coaxial at u=0.22 for crisp sliver-free NURBS booleans!)
     brim_low = tbm.createCylinderOrCone(
-        wpt(1.62, 0.0, 0.18), mm(1.72),
-        wpt(2.16, 0.0, 0.22), mm(hat_brim_rad_mm),
+        wpt(1.60, 0.0, 0.22), mm(1.70),
+        wpt(2.12, 0.0, 0.22), mm(hat_brim_rad_mm),
     )
     brim_rim = tbm.createCylinderOrCone(
-        wpt(2.10, 0.0, 0.22), mm(hat_brim_rad_mm),
-        wpt(2.26, 0.0, 0.23), mm(hat_brim_rad_mm),
+        wpt(2.12, 0.0, 0.22), mm(hat_brim_rad_mm),
+        wpt(2.24, 0.0, 0.22), mm(hat_brim_rad_mm),
     )
     brim_up = tbm.createCylinderOrCone(
-        wpt(2.20, 0.0, 0.23), mm(hat_brim_rad_mm),
-        wpt(2.55, 0.0, 0.25), mm(2.12),
+        wpt(2.24, 0.0, 0.22), mm(hat_brim_rad_mm),
+        wpt(2.58, 0.0, 0.22), mm(2.08),
     )
     hatband = tbm.createTorus(
-        wpt(2.58, 0.0, 0.25),
+        wpt(2.56, 0.0, 0.22),
         adsk.core.Vector3D.create(ax, ay, az),
-        mm(1.92),
+        mm(1.90),
         mm(0.34),
     )
     for part in (brim_low, brim_rim, brim_up, hatband):
@@ -230,7 +230,7 @@ def build_gravity_wizard_temp_body(
     elbow_h = max(3.6, pin_protrusion_mm * 0.74)
     tip_h = max(elbow_h + 0.9, pin_protrusion_mm - pin_tip_rad_mm)
     crown_low = tbm.createCylinderOrCone(
-        wpt(2.42, 0.0, 0.25), mm(2.04),
+        wpt(2.42, 0.0, 0.22), mm(2.02),
         wpt(elbow_h, 0.0, 0.42), mm(0.98),
     )
     crown_elbow = tbm.createSphere(wpt(elbow_h - 0.03, 0.0, 0.42), mm(1.04))
@@ -289,7 +289,7 @@ def build_die_component(
     comp.bRepBodies.add(box_temp, bf_cube)
     bf_cube.finishEdit()
 
-    target_body = comp.bRepBodies.item(0)
+    target_body = bf_cube.bodies.item(0)
     target_body.name = cfg["name"] + "_Body"
 
     # 2. Fillet all 12 cube edges for crisp parlour feel & smooth rolling
@@ -303,7 +303,7 @@ def build_die_component(
 
     # 3. Protruding Self-Righting Gravity Wizard Pin-Axles wearing Pointed Wizard Hats along +-X
     if cfg["pinned_x"]:
-        join_temp = None
+        wiz_temps = []
         for sign in (-1.0, 1.0):
             wiz_temp = build_gravity_wizard_temp_body(
                 tbm=tbm,
@@ -317,23 +317,25 @@ def build_die_component(
                 embed_mm=0.85,
                 include_cape_corbel=True,
             )
-            join_temp = add_or_union(tbm, join_temp, wiz_temp)
+            wiz_temps.append(wiz_temp)
 
         bf_join = comp.features.baseFeatures.add()
         bf_join.startEdit()
-        join_body = comp.bRepBodies.add(join_temp, bf_join)
+        for wt in wiz_temps:
+            comp.bRepBodies.add(wt, bf_join)
         bf_join.finishEdit()
 
         combines = comp.features.combineFeatures
         tools = adsk.core.ObjectCollection.create()
-        tools.add(join_body)
+        for b in bf_join.bodies:
+            tools.add(b)
         c_in = combines.createInput(target_body, tools)
         c_in.operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
         c_in.isKeepToolBodies = False
         combines.add(c_in)
 
     # 4. Recessed Spherical Casino Pips + Optional 3-Axis Modular Through-Bores
-    cut_temp = None
+    cut_tools = []
     d_pip = mm(side_mm * 0.275)  # +-4.95mm on 18mm die -> clears central Gravity Wizard base cleanly!
     r_pip = mm(pip_rad_mm)
     depth = mm(pip_depth_mm)
@@ -356,18 +358,18 @@ def build_die_component(
                 ring_axis = adsk.core.Vector3D.create(n[0], n[1], n[2])
                 major_r = mm(pin_base_rad_mm + 1.05) if is_pinned_face else mm(bore_rad_mm + 1.15)
                 torus = tbm.createTorus(ring_center, ring_axis, major_r, mm(0.50))
-                cut_temp = add_or_union(tbm, cut_temp, torus)
+                cut_tools.append(torus)
             else:
                 px = cx + n[0] * (half + sphere_out) + u_ax[0] * du + v_ax[0] * dv
                 py = cy + n[1] * (half + sphere_out) + u_ax[1] * du + v_ax[1] * dv
                 pz = cz + n[2] * (half + sphere_out) + u_ax[2] * du + v_ax[2] * dv
                 sp = tbm.createSphere(adsk.core.Point3D.create(px, py, pz), r_pip)
-                cut_temp = add_or_union(tbm, cut_temp, sp)
+                cut_tools.append(sp)
 
     if cfg["three_axis_bore"]:
         rb = mm(bore_rad_mm)
         ext = half + mm(1.0)
-        b_x = tbm.createCylinderOrCone(
+        bore_cross = tbm.createCylinderOrCone(
             adsk.core.Point3D.create(cx - ext, cy, cz), rb,
             adsk.core.Point3D.create(cx + ext, cy, cz), rb
         )
@@ -379,19 +381,21 @@ def build_die_component(
             adsk.core.Point3D.create(cx, cy, cz - ext), rb,
             adsk.core.Point3D.create(cx, cy, cz + ext), rb
         )
-        cut_temp = add_or_union(tbm, cut_temp, b_x)
-        cut_temp = add_or_union(tbm, cut_temp, b_y)
-        cut_temp = add_or_union(tbm, cut_temp, b_z)
+        tbm.booleanOperation(bore_cross, b_y, adsk.fusion.BooleanTypes.UnionBooleanType)
+        tbm.booleanOperation(bore_cross, b_z, adsk.fusion.BooleanTypes.UnionBooleanType)
+        cut_tools.append(bore_cross)
 
-    if cut_temp is not None:
+    if cut_tools:
         bf_cut = comp.features.baseFeatures.add()
         bf_cut.startEdit()
-        cut_body = comp.bRepBodies.add(cut_temp, bf_cut)
+        for ct in cut_tools:
+            comp.bRepBodies.add(ct, bf_cut)
         bf_cut.finishEdit()
 
         combines = comp.features.combineFeatures
         tools = adsk.core.ObjectCollection.create()
-        tools.add(cut_body)
+        for b in bf_cut.bodies:
+            tools.add(b)
         c_in = combines.createInput(target_body, tools)
         c_in.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
         c_in.isKeepToolBodies = False
@@ -421,11 +425,13 @@ def build_modular_snap_pin_kit(
     shaft_r = mm(bore_rad_mm - clearance_mm)
     die_len = mm(side_mm)
 
-    cap_socket_r = mm(1.38 + clearance_mm * 0.5)
-    cap_socket_h = mm(3.8)
+    # Press-fit socket enclosed cleanly inside the thick robe/head/brim (Z = 0..2.35 mm)
+    tenon_nom_mm = 1.05
+    cap_socket_r = mm(tenon_nom_mm + clearance_mm * 0.5)
+    cap_socket_h = mm(2.35)
 
-    kit_temp = None
-    for y_off in (-7.5, 7.5):
+    kit_parts = []
+    for idx, y_off in enumerate((-7.5, 7.5)):
         wiz_x_mm = cx_mm - 6.0
         wiz_y_mm = cy_mm + y_off
         wiz = build_gravity_wizard_temp_body(
@@ -458,34 +464,39 @@ def build_modular_snap_pin_kit(
             adsk.core.Point3D.create(mm(wiz_x_mm), mm(wiz_y_mm), cap_socket_h), cap_socket_r
         )
         tbm.booleanOperation(wiz, sock, adsk.fusion.BooleanTypes.DifferenceBooleanType)
-        kit_temp = add_or_union(tbm, kit_temp, wiz)
+        kit_parts.append((f"WizardSnapCap_{idx + 1}", wiz))
 
     # Stepped Connecting Rod standing at (+6.0 mm, 0) on Z = 0
     rod_x = cx + mm(6.0)
-    tenon_r = mm(1.38 - clearance_mm * 0.5)
-    tenon_h = mm(3.5)
+    tenon_r = mm(tenon_nom_mm - clearance_mm * 0.5)
+    tenon_h = mm(2.15)
     rod_total_h = die_len + 2.0 * tenon_h
 
-    tenon_full = tbm.createCylinderOrCone(
+    rod_body = tbm.createCylinderOrCone(
         adsk.core.Point3D.create(rod_x, cy, 0.0), tenon_r,
         adsk.core.Point3D.create(rod_x, cy, rod_total_h), tenon_r
     )
     mid_collar = tbm.createCylinderOrCone(
-        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.65)), shaft_r,
+        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.85)), shaft_r,
         adsk.core.Point3D.create(rod_x, cy, tenon_h + die_len), shaft_r
     )
     lower_taper = tbm.createCylinderOrCone(
         adsk.core.Point3D.create(rod_x, cy, tenon_h), tenon_r,
-        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.65)), shaft_r
+        adsk.core.Point3D.create(rod_x, cy, tenon_h + mm(0.85)), shaft_r
     )
-    tbm.booleanOperation(tenon_full, mid_collar, adsk.fusion.BooleanTypes.UnionBooleanType)
-    tbm.booleanOperation(tenon_full, lower_taper, adsk.fusion.BooleanTypes.UnionBooleanType)
-    kit_temp = add_or_union(tbm, kit_temp, tenon_full)
+    tbm.booleanOperation(rod_body, mid_collar, adsk.fusion.BooleanTypes.UnionBooleanType)
+    tbm.booleanOperation(rod_body, lower_taper, adsk.fusion.BooleanTypes.UnionBooleanType)
+    kit_parts.append(("SteppedAxleRod", rod_body))
 
     bf_kit = comp.features.baseFeatures.add()
     bf_kit.startEdit()
-    comp.bRepBodies.add(kit_temp, bf_kit)
+    for _, part_temp in kit_parts:
+        comp.bRepBodies.add(part_temp, bf_kit)
     bf_kit.finishEdit()
+
+    for idx, (part_name, _) in enumerate(kit_parts):
+        if idx < bf_kit.bodies.count:
+            bf_kit.bodies.item(idx).name = part_name
 
 
 def run(context):
@@ -494,11 +505,12 @@ def run(context):
         app = adsk.core.Application.get()
         ui = app.userInterface
 
-        doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+        app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
         design = adsk.fusion.Design.cast(app.activeProduct)
-        design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+        if design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
+            design.designType = adsk.fusion.DesignTypes.ParametricDesignType
         root = design.rootComponent
-        root.name = "FD_too0_GravityWizard_AxleDice_18mm"
+        # Note: design.rootComponent.name is read-only in Fusion (reflects saved document title).
 
         # Register reference User Parameters in Fusion 360 (Modify -> Change Parameters)
         params = design.userParameters
@@ -515,7 +527,8 @@ def run(context):
             ("PrintClearance", "0.20 mm", "FDM press/slip clearance"),
         ]
         for p_name, p_expr, p_desc in param_defs:
-            params.add(p_name, adsk.core.ValueInput.createByString(p_expr), "mm", p_desc)
+            if params.itemByName(p_name) is None:
+                params.add(p_name, adsk.core.ValueInput.createByString(p_expr), "mm", p_desc)
 
         side_mm = 18.0
         fillet_mm = 1.4
