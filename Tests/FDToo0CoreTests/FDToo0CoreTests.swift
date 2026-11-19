@@ -142,4 +142,100 @@ final class FDToo0CoreTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(empties, 1)
         }
     }
+
+    func testAll24StatesHaveUnique45DegreeTwistedSignaturesAndExactQuaternions() {
+        let all24 = DieOrientation.all24Orientations
+        XCTAssertEqual(all24.count, 24)
+
+        var signatures = Set<LearnedDieSignature>()
+        for orient in all24 {
+            let sig = LearnedGeometryOracle.signature(for: orient)
+            signatures.insert(sig)
+
+            // Verify Shepperd O(1) unitQuaternion maps local (+Y=1, +Z=2, +X=3) to exact world normals!
+            let q = orient.unitQuaternion
+            let w1 = q.rotate(Vec3(0, 1, 0))
+            let w2 = q.rotate(Vec3(0, 0, 1))
+            let w3 = q.rotate(Vec3(1, 0, 0))
+
+            let e1 = orient.worldNormal(forPip: 1)
+            let e2 = orient.worldNormal(forPip: 2)
+            let e3 = orient.worldNormal(forPip: 3)
+
+            XCTAssertLessThan((w1 - e1).length, 1e-6)
+            XCTAssertLessThan((w2 - e2).length, 1e-6)
+            XCTAssertLessThan((w3 - e3).length, 1e-6)
+        }
+        // Theorem: 6 faces x 4 corner quadrants = 24 unique Top-face appearances!
+        XCTAssertEqual(signatures.count, 24)
+    }
+
+    func testAxleLockSkewersAndConjugateFourNumberYahtzee() {
+        // 1. Conjugate duplicate-face 6-sided cubes {1,1,2,2,3,4} + {3,3,4,4,1,2} -> exact 0.25 per number
+        let probs = AxleYahtzeeEngine.conjugatePairPoolProbabilities()
+        for num in 1...4 {
+            XCTAssertEqual(probs[num] ?? 0.0, 0.25, accuracy: 1e-9)
+        }
+
+        // 2. Mysterious-Axis [1-6] locks East/West to 1/6 and cycles {2,3,5,4} cleanly on North/South tips
+        var locked = AxleYahtzeeEngine.alignedInitialOrientation(for: .pin16, step: 0)
+        XCTAssertFalse(locked.canTip(.east, axleLock: .pin16))
+        XCTAssertTrue(locked.canTip(.north, axleLock: .pin16))
+
+        var visitedTops = Set<Int>()
+        for _ in 0..<4 {
+            visitedTops.insert(locked.top)
+            locked = locked.tipped(.north)
+        }
+        XCTAssertEqual(visitedTops, Set([2, 3, 4, 5]))
+        XCTAssertNil(LearnedGeometryOracle.shortestFlipPath(from: locked, toTargetTop: 6, axleLock: .pin16))
+        XCTAssertNotNil(LearnedGeometryOracle.shortestFlipPath(from: locked, toTargetTop: 5, axleLock: .pin16))
+
+        // 3. Two-Eyed Jack (Pip 4) acts as Wild toward AxLe Yahtzee 5-of-a-Kind!
+        let pts = AxleYahtzeeEngine.evaluatePatternCategory(.axleYahtzee50, values: [2, 2, 2, 4, 4], wildValue: 4)
+        XCTAssertEqual(pts, 50)
+    }
+
+    func testHolySmolleyPREMTransitCoriolisAndOTECSurplus() {
+        let uniformEarth = HolySmolleySimulator.simulateTransit(model: .earthUniformChord, chordDepthFraction: 1.0, vacuumPressurePa: 0.01)
+        let premEarth = HolySmolleySimulator.simulateTransit(model: .earthPolarPREM, chordDepthFraction: 1.0, vacuumPressurePa: 0.01)
+        let moonDrop = HolySmolleySimulator.simulateTransit(model: .holyMoonZ404, chordDepthFraction: 1.0, vacuumPressurePa: 0.0)
+        let eqEarth = HolySmolleySimulator.simulateTransit(model: .earthEquatorial, chordDepthFraction: 1.0, vacuumPressurePa: 0.01)
+
+        // Uniform Earth ~42.2 min vs PREM Earth ~38.2 min vs Moon ~54.2 min
+        XCTAssertEqual(uniformEarth.transitMinutes, 42.2, accuracy: 0.5)
+        XCTAssertEqual(premEarth.transitMinutes, 38.2, accuracy: 0.5)
+        XCTAssertLessThan(premEarth.transitMinutes, uniformEarth.transitMinutes - 3.0)
+        XCTAssertEqual(moonDrop.transitMinutes, 54.2, accuracy: 0.5)
+
+        // Polar z404 (89.9°S) has ~500x lower Coriolis wall force than Equatorial core drop!
+        XCTAssertLessThan(premEarth.peakCoriolisNewtonsPerKg, 0.01)
+        XCTAssertGreaterThan(eqEarth.peakCoriolisNewtonsPerKg, 0.90)
+
+        // OTEC Rankine plant produces positive net megawatts & desalinated freshwater at ΔT = 23.5°C
+        let otec = HolySmolleySimulator.evaluateOTEC(OTECPlantConfig(warmSurfaceTempC: 27.5, coldAbyssalTempC: 4.0))
+        XCTAssertGreaterThan(otec.netSurplusMW, 2.0)
+        XCTAssertGreaterThan(otec.desalinatedFreshwaterLitersPerSec, 100.0)
+    }
+
+    func testMoonBuggy2PipRWDDriftExceeds4WDCrawlSpeedAndSlipAngle() {
+        let crawlBuggy = MoonBuggyArenaEngine()
+        crawlBuggy.driveMode = .crawl4WD
+        crawlBuggy.throttleInput = 1.0
+        crawlBuggy.steeringInput = 0.75
+
+        let driftBuggy = MoonBuggyArenaEngine()
+        driftBuggy.driveMode = .drift2PipRWD
+        driftBuggy.throttleInput = 1.0
+        driftBuggy.steeringInput = 0.75
+
+        for _ in 0..<240 {
+            crawlBuggy.step(dt: 1.0 / 60.0)
+            driftBuggy.step(dt: 1.0 / 60.0)
+        }
+
+        XCTAssertGreaterThan(driftBuggy.groundSpeed, crawlBuggy.groundSpeed * 1.45)
+        XCTAssertGreaterThan(driftBuggy.slipAngleDegrees, crawlBuggy.slipAngleDegrees * 2.0)
+        XCTAssertGreaterThan(driftBuggy.roostertailIntensity, crawlBuggy.roostertailIntensity)
+    }
 }

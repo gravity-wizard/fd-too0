@@ -1,66 +1,54 @@
-# Flipping Dice & `FD_too0` (`1,023` Levels)
+# `FD_too0` • Joe SmoLLey 3D Spatial Deck (`A785` Xcode Edition)
 
-**Gravity Wizards, Inc.** (`akapps` / `two3` Heritage) — Universal **SwiftUI + SpriteKit + CoreHaptics + AVAudioEngine** puzzle game for **iOS 17+, iPadOS 17+, and macOS 14+**, paired with an instant-play 60fps iPhone Web/PWA twin at **`https://gravitywizards.com/fd-too0`** (and inside **`GwCrm` Spy Lab** at `https://gravitywizards.com/crm?tab=spy`).
-
----
-
-## "Choose Both" — Live `Flipper` Dual-Mode Architecture
-
-Honoring [`Game_23.swift`](https://github.com/gravity-wizard/twst23) and `Flipper_qx.swift` (`TRU ↔ N0T`), tap the **`⇄ Classic FD / FD_too0`** pill at any time to switch seamlessly between:
-
-1. **Near-Original `Flipping Dice` (`Classic FD`)**
-   - Pure finite tray puzzle with real 3D 6-face pip dice where **opposite faces always sum to `7`** (`1↔6`, `2↔5`, `3↔4`).
-   - Every stage is constructed via deterministic reverse-tumbling from a solved Harmony formation so **100% of boards are guaranteed solvable** within Move & Time Par.
-2. **`FD_too0` — Progressive, Addictive, Challenging (`Levels 1 – 1,023` + Daily `#23` Seed)**
-   - Fuses 90° physical pip-tumbling & Tumble-Swaps with **3+ matching top-pip clears, gravity cascades, and Chain Multipliers (`×2`, `×3`, `×4+`)**.
-   - **Pastel HSB Chroma Surge**: Matching 3+ dice that also share the same Pastel body hue triggers a **×3 Chroma Surge** and awards **`+1` 180° Twist Charge** (`top ↔ 7 - top`).
-   - **10 Escalating Worlds (`#1` → `#1,023`)** with **Boss Boards every 23 levels (`#23, #46, #69 ... #1,012, #1,023`)**:
-     1. *Spruce Workshop* (`Lv 1–23`) — Pure 90° Tumbles & Sum-7 Craft
-     2. *Pastel Conservatory* (`Lv 24–115`) — `×2` / `×3` HSB Chroma Multiplier Pads
-     3. *Frosted Glacier* (`Lv 116–230`) — Two-Hit Frosted Ice Dice
-     4. *GPADA Airfield* (`Lv 231–345`) — Quad-Rail `180°` Twist Launchers
-     5. *SlogBog Lanterns* (`Lv 346–460`) — Chained Dice Freed by Adjacent Pops
-     6. *Keep24 Hollows* (`Lv 461–575`) — Sculpted `keep24` & Sanctum Board Masks
-     7. *Alpenglow Ridge* (`Lv 576–690`) — Paired Summit Warp Portals
-     8. *Sum-Seven Sanctum* (`Lv 691–805`) — High-Density Chroma + Twist Matrices
-     9. *Shifting Currents* (`Lv 806–920`) — Multi-Hazard Jetstream Stages
-     10. *The Gravitorium* (`Lv 921–1,023`) — `6×6` Master Bosses & Grand `#1,023` Seal
+**Gravity Wizards, Inc.** (`akapps` / `two3` / `Twisted23` Heritage) — Universal **SwiftUI + SceneKit + Metal + SpriteKit + AVAudioEngine** 3D Spatial Workspace for **macOS 14+, iOS 17+, and iPadOS 17+**, zero external dependencies (`< 2 MB` footprint).
 
 ---
 
-## Pastel Colored Dice + Dark / Light / Spruce Modes + 3 Pace Speeds
+## Four Playable 3D Decks in One Universal App
 
-Cycle live in the top bar between:
-- **Obsidian Dark**: Matte-porcelain luminous pastel dice (*Coral Blush*, *Apricot Peach*, *Buttercream Gold*, *Mint Sage*, *Glacier Sky*, *Rose Quartz*) with deep espresso recessed pips over an obsidian-walnut tray.
-- **Birch Light**: Sunlit alabaster-linen tray with warm ceramic pastel dice and crisp elevation shadows.
-- **Spruce Wood**: Classic `akapps` `WoodGrain` dark spruce workshop table aesthetic.
+Switch instantaneously across all four **Joe SmoLLey** tables in the top Spatial Deck bar:
 
-Switch pace anytime on the **`Rabbit 🐇` • `TurtLe 🐢` • `SnaiL 🐌`** Speed Bar:
-- **`Rabbit 🐇`**: Snappy `185ms` 3D tumbles, `170ms` match glow, `190ms` gravity cascades, and `1×` arcade Time Par.
-- **`TurtLe 🐢`** *(Default)*: Smooth `460ms` 3D tumbles, `480ms` match-glow preview before popping, `450ms` wave-by-wave gravity drops, and `2×` Time Par.
-- **`SnaiL 🐌`**: Zen `900ms` slow-motion Sum-7 cube inspection, `960ms` match glow, `880ms` cascades, and `4×` Zen Time Par.
+1. **🎲 `FLipPing 3D` — `Classic FD` & `FD_too0` (`1,023` Levels in True 3D)**
+   - Hardware-accelerated **SceneKit PBR 3D Dice** showing **Top + South + East** simultaneously in Twisted23's signature **3D-in-2D Orthographic** camera (plus live **3D Perspective** and **Classic 2D** toggles).
+   - Preserves all `1,023` deterministic SplitMix64 levels, `Rabbit 🐇 / TurtLe 🐢 / SnaiL 🐌` choreography speeds, Pastel HSB Chroma Surges, `180°` Twists, and `1A+2A` H-T-O Story-Score decoding.
+2. **🃏 `AxLe Yahtzee` — Mysterious-Axis & Conjugate 4-Number Parlour**
+   - **Mysterious-Axis Mode**: Metallic Sum-7 skewers (`[1–6]`, `[2–5]`, `[3–4]`) lock each die onto a 4-face equatorial ring with exact `1/4 = 25%` odds per face.
+   - **Physical 4-Number Conjugate Cubes**: Real 6-face cubes carrying only 4 numbers (`Cube α {1,1,2,2,3,4}` + `Cube β {3,3,4,4,1,2}`) engineered so any conjugate pair yields exact `3/12 = 25%` uniform probability across `{1, 2, 3, 4}`.
+   - **One-Eyed & Two-Eyed Jack Powers**: `Two-Eyed Jack (J♦)` acts as a **Wild** rank; `One-Eyed Jack (J♠)` awards an **AxLe-Breaker** token to shift or unlock a die's skewer mid-game!
+3. **🪐 `HoLy SmoLLey` — Vacuum Gravity-Trains & Abyssal OTEC Odyssey**
+   - Real differential-equation physics explorer & storied campaign hosted by **Joe SmoLLey**:
+     - **HoLy Earth PREM Core Express (`89.9°S ↔ 89.9°N`)**: Iron-nickel core acceleration (`10.68 m/s²` at CMB) beats uniform-sphere SHM (`42.2 min` → **`38 min 10 sec`** at `9.82 km/s`) with near-zero polar Coriolis wall force!
+     - **HoLy M00N Shackleton Vacuum Drop**: Natural hard-vacuum free-fall in `54.19 min` at `1.622 m/s²`.
+     - **Submerged Ocean-Trench OTEC HyperLoop**: Closed-cycle Rankine power between warm `27.5°C` surface seawater and `4°C` upwelled abyssal water driving turbo-molecular vacuum pumps, maglev boost, and freshwater desalination.
+     - **3-Die AxLe Valve Manifold**: Tumble 3D Axle-Locked airlock dice to prime and launch each mission!
+4. **🛞 `z404 M00N Buggy` — `4WD Crawl` ↔ `2-Pip RWD Drift` Lab**
+   - Inspired by [`twisted23.com/visito`](https://www.twisted23.com/visito) (`z404` Polar Rim Detour at `89.9°S`): drive a 3D Kapton-gold lunar rover around Shackleton Rim and the HoLy M00N portal!
+   - Toggle live between **`4WD 4-Pip Crawl`** and **`2-Pip RWD Drift`** (rear `[2-5]` 2-pip overdrive + counter-steering free-caster front dice wheels + `1.68×` top speed + Kapton/ice regolith roostertails & low-G `1.62 m/s²` hops!).
 
 ---
 
-## Opening & Running on MacBook Air / Xcode
+## Three Live-Toggleable 3D Die Skins (Learned-Player `SO(3)` Geometry)
 
-Zero external dependencies (`< 1 MB` footprint—friendly even on tight SSD space!):
+Tap the **`🎲 RH000 Pips` / `◇45° Twisted` / `🃏J FaceCards`** pill anytime:
+- **`RH000 Pips`**: Sculpted 3D recessed casino pips with Western right-handed chirality (`1→2→3` CCW around $V_{123}$; `6` rails point toward `3 & 4`).
+- **`45° Twisted Numerals` (`ang4v_o` Heritage)**: Every numeral is rotated `45°` so crowns on `{1, 2, 3}` point into shared vertex $V_{123}$ and `{4, 5, 6}` point into $V_{654}$ — giving **24 unique Top-face signatures (`6 faces × 4 corners`)** so Learned players read all 5 hidden faces at a glance!
+- **`Royal FaceCards`**: `{A♠, K♥, Q♦, 10♣, J♠ One-Eyed, J♦ Two-Eyed}` with directional corner chevrons.
+
+---
+
+## Pull & Run in Xcode on MacBook Air / iPhone (`A785` Workflow)
 
 ```bash
 git clone https://github.com/gravity-wizard/fd-too0.git
 cd fd-too0
+git fetch origin && git checkout feat/joe-smolley-3d-spatial-deck
 
-# Option A: Open directly in Xcode 15 / 16+ (macOS & iOS Simulator)
+# Option A: Open directly in Xcode 15 / 16+ (macOS & iOS Simulator) and press Cmd + R!
 open Package.swift
 
-# Option B: Run the 1,023-level solver & Sum-7 algebra test suite
+# Option B: Run the full 24-state quaternion, Yahtzee, HoLy SmoLLey PREM/OTEC & Drift test suite
 swift test
 
-# Option C: Generate a full App Store / TestFlight .xcodeproj (if XcodeGen is installed)
-brew install xcodegen && xcodegen generate && open FD_too0.xcodeproj
+# Option C: Generate an App Store / TestFlight .xcodeproj via XcodeGen
+xcodegen generate && open FD_too0.xcodeproj
 ```
-
-### Instant-Play iPhone / Browser Twin
-Play all `1,023` identical SplitMix64-seeded levels right now on iPhone Safari (**Share → Add to Home Screen**) or desktop:
-- **Direct Game URL**: https://gravitywizards.com/fd-too0
-- **Inside `GwCrm` Spy Lab**: https://gravitywizards.com/crm?tab=spy

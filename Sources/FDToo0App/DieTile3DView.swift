@@ -12,6 +12,7 @@ import FDToo0Core
 public struct DieTile3DView: View {
     public let die: BoardDie
     public let appearance: BoardAppearanceMode
+    public let skin: DieVisualSkin
     public let isSelected: Bool
     public let isMatchGlowing: Bool
     public let springResponse: Double
@@ -25,6 +26,7 @@ public struct DieTile3DView: View {
     public init(
         die: BoardDie,
         appearance: BoardAppearanceMode,
+        skin: DieVisualSkin = .modeledPips,
         isSelected: Bool,
         isMatchGlowing: Bool = false,
         springResponse: Double = 0.46,
@@ -34,6 +36,7 @@ public struct DieTile3DView: View {
     ) {
         self.die = die
         self.appearance = appearance
+        self.skin = skin
         self.isSelected = isSelected
         self.isMatchGlowing = isMatchGlowing
         self.springResponse = springResponse
@@ -83,13 +86,26 @@ public struct DieTile3DView: View {
                             )
                     )
 
-                // True 3D Casino Die Pip Matrix (1...6, respecting yaw for 2, 3, and 6 rails!)
-                PipMatrixView(
-                    activeSlots: die.orientation.topFacePipSlots,
-                    pipDiameter: pipSize,
-                    pipColor: pipColor
-                )
+                if skin == .modeledPips {
+                    PipMatrixView(
+                        activeSlots: die.orientation.topFacePipSlots,
+                        pipDiameter: pipSize,
+                        pipColor: pipColor
+                    )
                     .padding(side * 0.18)
+                } else {
+                    let quad = LearnedGeometryOracle.twisted45Corner(for: die.orientation)
+                    let fc = FaceCardFace(pip: die.orientation.top)
+                    let title = skin == .royalFaceCards ? fc.compactCode : "\(die.orientation.top)"
+                    let ink = (skin == .royalFaceCards && fc.isRedSuit)
+                        ? Color(red: 0.78, green: 0.12, blue: 0.18)
+                        : pipColor
+
+                    Text(title)
+                        .font(.system(size: side * (skin == .royalFaceCards ? 0.31 : 0.46), weight: .black, design: .rounded))
+                        .foregroundStyle(ink)
+                        .rotationEffect(.degrees(quad.clockwiseDegreesFromNorth))
+                }
 
                 // Frosted Ice Overlay
                 if die.frostLayers > 0 {

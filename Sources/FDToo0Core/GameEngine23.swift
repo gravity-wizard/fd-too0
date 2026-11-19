@@ -197,6 +197,8 @@ public final class GameEngine23 {
     public var selectedCoord: GridCoord? = nil
     public var twistArmed: Bool = false
     public var appearanceMode: BoardAppearanceMode = .dark
+    public var visualSkin: DieVisualSkin = .modeledPips
+    public var cameraProjection: CameraProjectionStyle = .orthographic3DIn2D
     public var paceSpeed: PaceSpeed = .turtle {
         didSet { saveProgress() }
     }

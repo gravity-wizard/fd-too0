@@ -1,9 +1,12 @@
 //
 //  FDToo0RootView.swift
-//  FD_too0
+//  FD_too0 — Joe SmoLLey 3D Spatial Deck
 //
-//  Main Universal SwiftUI + SpriteKit Game Screen with Live Flipper (Classic FD <-> FD_too0),
-//  Dark / Light / Spruce Wood Pastel Themes, 6-Face Cube Peek HUD, and Touch Swipe Controls.
+//  Unified Universal SwiftUI + SceneKit + SpriteKit Workspace:
+//  1) FLipPing Dice & FD_too0 (1,023 Levels in True 3D SceneKit + Classic 2D Toggle)
+//  2) AxLe-Locked & FaceCard Yahtzee Parlour (Mysterious-Axis + Conjugate 4-Number Cubes)
+//  3) HoLy SmoLLey Vacuum Gravity-Trains & Abyssal OTEC Odyssey
+//  4) z404 M00N Buggy (4WD Crawl <-> 2-Pip RWD Drift Lab)
 //
 
 import SwiftUI
@@ -11,7 +14,12 @@ import SpriteKit
 import FDToo0Core
 
 public struct FDToo0RootView: View {
+    @State private var activeDeck: SpatialDeckTab = .flippingDice3D
     @State private var engine = GameEngine23(initialMode: .fdToo0, startLevel: 1)
+    @State private var yahtzeeEngine = AxleYahtzeeEngine()
+    @State private var smolleyEngine = HolySmolleyMissionEngine()
+    @State private var buggyEngine = MoonBuggyArenaEngine()
+
     @State private var sparkleScene = CascadeSparkleScene(size: CGSize(width: 420, height: 420))
     @State private var showAtlas = false
     @State private var showRules = false
@@ -35,35 +43,46 @@ public struct FDToo0RootView: View {
 
     private var windowBackground: Color {
         switch engine.appearanceMode {
-        case .dark:   return Color(red: 0.06, green: 0.06, blue: 0.06)
+        case .dark:   return Color(red: 0.06, green: 0.06, blue: 0.07)
         case .light:  return Color(red: 0.99, green: 0.98, blue: 0.95)
         case .spruce: return Color(red: 0.16, green: 0.11, blue: 0.08)
         }
     }
 
     private var primaryInk: Color {
-        engine.appearanceMode == .light ? Color(red: 0.13, green: 0.11, blue: 0.10) : Color(red: 0.96, green: 0.94, blue: 0.90)
+        engine.appearanceMode == .light
+            ? Color(red: 0.13, green: 0.11, blue: 0.10)
+            : Color(red: 0.96, green: 0.94, blue: 0.90)
     }
 
     public var body: some View {
         ZStack {
             windowBackground.ignoresSafeArea()
 
-            VStack(spacing: 10) {
-                headerFlipperBar
-                paceSpeedBar
-                scoreSlatStrip
-                boardTrayView
-                selectedDieCompassHUD
-                bottomControlDeck
+            VStack(spacing: 8) {
+                spatialDeckSwitcherBar
+                globalSkinAndProjectionBar
+
+                switch activeDeck {
+                case .flippingDice3D:
+                    flippingDiceDeckBody
+                case .axleYahtzee:
+                    AxleYahtzee3DView(yahtzee: yahtzeeEngine, globalEngine: engine)
+                case .holySmolley:
+                    HolySmolley3DView(smolley: smolleyEngine, globalEngine: engine)
+                case .moonBuggyZ404:
+                    MoonBuggy3DView(buggy: buggyEngine, globalEngine: engine)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: 620)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 660)
         }
         .preferredColorScheme(engine.appearanceMode == .light ? .light : .dark)
         .onReceive(timer) { _ in
-            engine.tickSecond()
+            if activeDeck == .flippingDice3D {
+                engine.tickSecond()
+            }
         }
         .sheet(isPresented: $showAtlas) {
             WorldAtlasSheet(engine: engine)
@@ -72,13 +91,121 @@ public struct FDToo0RootView: View {
             RulesInspectorSheet()
         }
         .overlay {
-            if engine.isWon {
+            if activeDeck == .flippingDice3D && engine.isWon {
                 victoryOverlayCard
             }
         }
     }
 
-    // MARK: - Top Flipper & Theme Bar
+    // MARK: - Joe SmoLLey 4-Deck Switcher Bar
+
+    private var spatialDeckSwitcherBar: some View {
+        HStack(spacing: 5) {
+            ForEach(SpatialDeckTab.allCases) { tab in
+                let selected = (activeDeck == tab)
+                Button {
+                    cancelChoreography()
+                    activeDeck = tab
+                    TactileAudioHaptics.shared.playTumble(pip: 5)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(tab.iconGlyph)
+                            .font(.caption2)
+                        Text(tab.shortTitle)
+                            .font(.system(size: 11, weight: selected ? .black : .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(selected ? Color(red: 0.89, green: 0.62, blue: 0.22) : trayBackground)
+                    )
+                    .foregroundStyle(selected ? Color.black : primaryInk.opacity(0.86))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Global 3D Skin (`RH000 Pips` | `45° Twisted` | `FaceCards`) & Camera Projection Bar
+
+    private var globalSkinAndProjectionBar: some View {
+        HStack(spacing: 6) {
+            Button {
+                let skins = DieVisualSkin.allCases
+                let idx = skins.firstIndex(of: engine.visualSkin) ?? 0
+                engine.visualSkin = skins[(idx + 1) % skins.count]
+                TactileAudioHaptics.shared.playTumble(pip: 4)
+            } label: {
+                Text("\(engine.visualSkin.badgeGlyph) \(engine.visualSkin.shortLabel)")
+                    .font(.system(size: 11, weight: .bold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(trayBackground))
+                    .overlay(Capsule().strokeBorder(primaryInk.opacity(0.22), lineWidth: 1))
+                    .foregroundStyle(primaryInk)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                let styles = CameraProjectionStyle.allCases
+                let idx = styles.firstIndex(of: engine.cameraProjection) ?? 0
+                engine.cameraProjection = styles[(idx + 1) % styles.count]
+            } label: {
+                Text("🎥 \(engine.cameraProjection.shortLabel)")
+                    .font(.system(size: 11, weight: .bold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(trayBackground))
+                    .overlay(Capsule().strokeBorder(primaryInk.opacity(0.22), lineWidth: 1))
+                    .foregroundStyle(primaryInk)
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 2)
+
+            Button {
+                let modes = BoardAppearanceMode.allCases
+                let idx = modes.firstIndex(of: engine.appearanceMode) ?? 0
+                engine.appearanceMode = modes[(idx + 1) % modes.count]
+            } label: {
+                Text(engine.appearanceMode.displayName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Capsule().strokeBorder(primaryInk.opacity(0.24), lineWidth: 1))
+                    .foregroundStyle(primaryInk)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showRules = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(primaryInk)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Deck 1: FLipPing Dice & FD_too0 (1,023 Levels in True 3D SceneKit + Classic 2D)
+
+    private var flippingDiceDeckBody: some View {
+        VStack(spacing: 8) {
+            headerFlipperBar
+            paceSpeedBar
+            scoreSlatStrip
+            boardTrayView
+            selectedDieCompassHUD
+            bottomControlDeck
+        }
+    }
 
     private var headerFlipperBar: some View {
         HStack(spacing: 8) {
@@ -95,7 +222,7 @@ public struct FDToo0RootView: View {
                         .lineLimit(1)
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 5)
                 .background(
                     Capsule()
                         .fill(engine.mode == .fdToo0 ? Color(red: 0.84, green: 0.56, blue: 0.34) : Color(red: 0.35, green: 0.62, blue: 0.52))
@@ -108,46 +235,19 @@ public struct FDToo0RootView: View {
                 cancelChoreography()
                 showAtlas = true
             } label: {
-                VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
                     Text("Lv \(engine.currentLevel)/1023\(engine.blueprint.isBossLevel ? " • BOSS" : "") ▾")
                         .font(.footnote.weight(.bold).monospacedDigit())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                    Text(engine.blueprint.world.name)
+                    Text("• \(engine.blueprint.world.name)")
                         .font(.caption2)
-                        .lineLimit(1)
                         .opacity(0.75)
+                        .lineLimit(1)
                 }
                 .foregroundStyle(primaryInk)
             }
             .buttonStyle(.plain)
 
-            Spacer(minLength: 4)
-
-            Button {
-                let modes = BoardAppearanceMode.allCases
-                let idx = modes.firstIndex(of: engine.appearanceMode) ?? 0
-                engine.appearanceMode = modes[(idx + 1) % modes.count]
-            } label: {
-                Text(engine.appearanceMode.displayName)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Capsule().strokeBorder(primaryInk.opacity(0.28), lineWidth: 1))
-                    .foregroundStyle(primaryInk)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                showRules = true
-            } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.body)
-                    .foregroundStyle(primaryInk)
-            }
-            .buttonStyle(.plain)
+            Spacer()
         }
     }
 
@@ -167,7 +267,7 @@ public struct FDToo0RootView: View {
                     Text(speed.stylizedLabel)
                         .font(.caption.weight(active ? .heavy : .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule()
                                 .fill(
@@ -181,7 +281,7 @@ public struct FDToo0RootView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(4)
+        .padding(3)
         .background(
             Capsule()
                 .fill(trayBackground)
@@ -189,16 +289,16 @@ public struct FDToo0RootView: View {
         )
     }
 
-    // MARK: - ScoreSlat Telemetry Strip (Game_23.swift Heritage)
+    // MARK: - ScoreSlat Telemetry Strip
 
     private var scoreSlatStrip: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 12) {
+        VStack(spacing: 5) {
+            HStack(spacing: 10) {
                 statPill(
                     label: engine.mode == .fdToo0 ? "CLEARED" : "TARGET PIP",
                     value: engine.mode == .fdToo0
                         ? "\(engine.diceCleared)/\(engine.blueprint.targetDiceCleared)"
-                        : "Pip \(engine.blueprint.targetHarmonyPip ?? 6)"
+                        : LearnedGeometryOracle.label(forPip: engine.blueprint.targetHarmonyPip ?? 6, skin: engine.visualSkin)
                 )
                 statPill(label: "MOVES / PAR", value: "\(engine.moves)/\(engine.blueprint.parMoves)")
                 statPill(
@@ -225,7 +325,7 @@ public struct FDToo0RootView: View {
             }
 
             Text(engine.lastBanner)
-                .font(.caption.weight(.medium))
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(primaryInk.opacity(0.84))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
@@ -241,7 +341,7 @@ public struct FDToo0RootView: View {
                 .font(.system(size: 13, weight: .heavy, design: .rounded).monospacedDigit())
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(trayBackground)
@@ -249,30 +349,43 @@ public struct FDToo0RootView: View {
         .foregroundStyle(primaryInk)
     }
 
-    // MARK: - Interactive Pastel Dice Tray + SpriteKit Sparkles
+    // MARK: - True 3D SceneKit Board OR Classic 2D Board + SpriteKit Sparkles
 
     private var boardTrayView: some View {
         let rows = engine.blueprint.rows
         let cols = engine.blueprint.cols
 
         return ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(trayBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(primaryInk.opacity(0.12), lineWidth: 1.5)
+            if engine.cameraProjection != .flat2D {
+                BoardScene3DView(
+                    engine: engine,
+                    isInteractionLocked: isChoreographing,
+                    onSwipeCell: { coord, dir in
+                        performSwipe(from: coord, direction: dir)
+                    },
+                    onTapCell: { coord in
+                        handleTap(on: coord)
+                    }
                 )
+            } else {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(trayBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(primaryInk.opacity(0.12), lineWidth: 1.5)
+                    )
 
-            VStack(spacing: 8) {
-                ForEach(0..<rows, id: \.self) { r in
-                    HStack(spacing: 8) {
-                        ForEach(0..<cols, id: \.self) { c in
-                            cellSlotView(row: r, col: c)
+                VStack(spacing: 8) {
+                    ForEach(0..<rows, id: \.self) { r in
+                        HStack(spacing: 8) {
+                            ForEach(0..<cols, id: \.self) { c in
+                                cellSlotView(row: r, col: c)
+                            }
                         }
                     }
                 }
+                .padding(14)
             }
-            .padding(14)
 
             SpriteView(scene: sparkleScene, options: [.allowsTransparency])
                 .allowsHitTesting(false)
@@ -302,6 +415,7 @@ public struct FDToo0RootView: View {
                     DieTile3DView(
                         die: die,
                         appearance: engine.appearanceMode,
+                        skin: engine.visualSkin,
                         isSelected: engine.selectedCoord == coord,
                         isMatchGlowing: engine.glowingMatchCoords.contains(coord),
                         springResponse: engine.paceSpeed.springResponse,
@@ -359,28 +473,31 @@ public struct FDToo0RootView: View {
         }
     }
 
-    // MARK: - 6-Face Cube Peek Compass
+    // MARK: - 6-Face Learned-Player Cube Peek Compass
 
     private var selectedDieCompassHUD: some View {
         Group {
             if let sel = engine.selectedCoord, let die = engine.grid[sel.row][sel.col] {
                 let o = die.orientation
-                HStack(spacing: 12) {
-                    Text("Selected (\(sel.row + 1),\(sel.col + 1)) • Top \(o.top) / Bottom \(o.bottom)")
-                        .font(.caption.weight(.bold))
+                let sig = LearnedGeometryOracle.signature(for: o)
+                let topToken = engine.visualSkin == .royalFaceCards ? sig.faceCardBadge : sig.displayBadge
+                HStack(spacing: 10) {
+                    Text("(\(sel.row + 1),\(sel.col + 1)) Top \(topToken) • TF \(o.tfCode)")
+                        .font(.caption2.weight(.bold))
                     Spacer()
                     Text("↑\(o.nextTopPip(whenTipped: .north))  →\(o.nextTopPip(whenTipped: .east))  ↓\(o.nextTopPip(whenTipped: .south))  ←\(o.nextTopPip(whenTipped: .west))")
-                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .font(.caption2.monospacedDigit().weight(.semibold))
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.vertical, 6)
                 .background(RoundedRectangle(cornerRadius: 10).fill(trayBackground))
                 .foregroundStyle(primaryInk)
             } else {
-                Text(engine.paceSpeed.summary)
-                    .font(.caption2)
-                    .foregroundStyle(primaryInk.opacity(0.66))
-                    .padding(.vertical, 4)
+                Text("\(engine.visualSkin.shortLabel) • \(engine.cameraProjection.shortLabel) • \(engine.paceSpeed.summary)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(primaryInk.opacity(0.68))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
     }
@@ -556,7 +673,6 @@ public struct FDToo0RootView: View {
                 isChoreographing = false
             }
 
-            // Phase 1: Let the 90° 3D tumble land visually at the chosen Rabbit / TurtLe / SnaiL pace
             let initialTumbleNs = UInt64(engine.paceSpeed.tumbleDuration * 1_000_000_000)
             try? await Task.sleep(nanoseconds: initialTumbleNs)
             if Task.isCancelled { return }
@@ -568,13 +684,11 @@ public struct FDToo0RootView: View {
                 let preview = engine.previewNextMatchWave()
                 if preview.isEmpty { break }
 
-                // Phase 2: Highlight the 3+ matching top-pip run before popping
                 engine.glowingMatchCoords = preview
                 let glowNs = UInt64(engine.paceSpeed.glowDuration * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: glowNs)
                 if Task.isCancelled { return }
 
-                // Phase 3: Pop matched dice & drop fresh Pastel HSB gravity cascade
                 let speed = engine.paceSpeed
                 let outcome = withAnimation(.spring(response: speed.dropDuration, dampingFraction: 0.78)) {
                     engine.commitSingleCascadeWave(waveIndex: wave)
