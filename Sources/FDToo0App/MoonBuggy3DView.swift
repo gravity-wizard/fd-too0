@@ -342,7 +342,7 @@ public struct MoonBuggy3DView: View {
             SceneView(
                 scene: sceneCoord.scene,
                 pointOfView: sceneCoord.cameraNode,
-                options: [.temporalAntialiasingEnabled]
+                options: [.rendersContinuously, .temporalAntialiasingEnabled]
             )
             .frame(minHeight: 255, maxHeight: 340)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))

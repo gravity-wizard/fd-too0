@@ -247,7 +247,7 @@ public struct BoardScene3DView: View {
             SceneView(
                 scene: coordinator.scene,
                 pointOfView: coordinator.cameraNode,
-                options: [.temporalAntialiasingEnabled]
+                options: [.rendersContinuously, .temporalAntialiasingEnabled]
             )
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 

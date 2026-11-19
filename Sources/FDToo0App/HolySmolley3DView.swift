@@ -302,7 +302,7 @@ public struct HolySmolley3DView: View {
             SceneView(
                 scene: sceneCoord.scene,
                 pointOfView: sceneCoord.cameraNode,
-                options: [.allowsCameraControl, .temporalAntialiasingEnabled]
+                options: [.allowsCameraControl, .rendersContinuously, .temporalAntialiasingEnabled]
             )
             .frame(height: 235)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
