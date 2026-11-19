@@ -241,9 +241,59 @@ final class FDToo0CoreTests: XCTestCase {
         engine.startTutorial()
         XCTAssertTrue(engine.isTutorialActive)
         XCTAssertTrue(engine.rollUnheldDice())
-        let eastBefore = engine.dice[0].orientation.east
+        let expectedSettled = engine.dice[0].settledOrientationAfterCorner120().top
         XCTAssertTrue(engine.spinDieCorner120(dieIndex: 0))
-        XCTAssertEqual(engine.dice[0].orientation.top, eastBefore)
+        XCTAssertEqual(engine.dice[0].orientation.top, expectedSettled)
+    }
+
+    func testProtrudingPinAxlesPreventPinnedNumbersFromLandingFaceUp() {
+        let engine = AxleYahtzeeEngine()
+        engine.probabilityMode = .mysteriousAxis
+
+        for axis in [AxleLockAxis.pin16, .pin25, .pin34] {
+            guard let pair = axis.pinnedPair else {
+                XCTFail("Expected pinned pair")
+                continue
+            }
+            let forbidden: Set<Int> = [pair.0, pair.1]
+            while engine.dice[0].axleLock != axis {
+                engine.axleBreakerTokens = 5
+                XCTAssertTrue(engine.cycleDieAxle(dieIndex: 0))
+            }
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+
+            for _ in 0..<12 {
+                engine.rollsRemaining = 3
+                XCTAssertTrue(engine.rollUnheldDice())
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+            }
+
+            for dir in TumbleDirection.allCases {
+                engine.tacticalNudgesRemaining = 2
+                XCTAssertTrue(engine.nudgeDie(dieIndex: 0, direction: dir))
+                XCTAssertEqual(engine.dice[0].axleLock, axis)
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+            }
+
+            for _ in 0..<4 {
+                engine.tacticalNudgesRemaining = 2
+                XCTAssertTrue(engine.spinDieCorner120(dieIndex: 0))
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+                XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+            }
+
+            engine.tacticalNudgesRemaining = 2
+            XCTAssertTrue(engine.twistDie180(dieIndex: 0))
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+
+            XCTAssertTrue(engine.yawDie90(dieIndex: 0))
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.top))
+            XCTAssertFalse(forbidden.contains(engine.dice[0].orientation.bottom))
+        }
     }
 
     func testHolySmolleyPREMTransitCoriolisAndOTECSurplus() {

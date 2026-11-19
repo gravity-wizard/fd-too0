@@ -853,7 +853,7 @@ public struct AxleYahtzee3DView: View {
                                     TactileAudioHaptics.shared.playTumble(pip: 5)
                                 }
                             } label: {
-                                Text("\(dir.arrowGlyph)\(o.nextTopPip(whenTipped: dir))")
+                                Text("\(dir.arrowGlyph)\(slot.settledOrientationAfterTip(dir).top)")
                                     .font(.system(size: 10, weight: .heavy, design: .rounded).monospacedDigit())
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 4)
@@ -868,7 +868,7 @@ public struct AxleYahtzee3DView: View {
                                 TactileAudioHaptics.shared.playTumble(pip: 6)
                             }
                         } label: {
-                            Text("◇120°→\(o.east)")
+                            Text("◇120°→\(slot.settledOrientationAfterCorner120().top)")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded).monospacedDigit())
                                 .lineLimit(1)
                                 .padding(.horizontal, 7)

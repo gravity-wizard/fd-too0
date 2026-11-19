@@ -384,36 +384,47 @@ public enum SceneKitDieBuilder {
 
     public static func makeAxleSkewerNode(for axle: AxleLockAxis) -> SCNNode {
         let holder = SCNNode()
-        let rod = SCNCylinder(radius: 0.085, height: 2.18)
         let goldMat = SCNMaterial()
         goldMat.lightingModel = .physicallyBased
         goldMat.diffuse.contents = makeColor(0.92, 0.69, 0.22)
-        goldMat.metalness.contents = 0.92
+        goldMat.metalness.contents = 0.90
         goldMat.roughness.contents = 0.16
-        goldMat.emission.contents = makeColor(0.28, 0.18, 0.02)
+        goldMat.emission.contents = makeColor(0.26, 0.17, 0.02)
+
+        // Internal through-shaft + self-righting 45° conical-acorn protruding bosses on both opposite faces
+        let rod = SCNCylinder(radius: 0.10, height: 1.50)
         rod.materials = [goldMat]
         holder.addChildNode(SCNNode(geometry: rod))
 
-        let capGeo = SCNSphere(radius: 0.145)
+        let topCone = SCNCone(topRadius: 0.06, bottomRadius: 0.27, height: 0.42)
+        topCone.materials = [goldMat]
+        let topBoss = SCNNode(geometry: topCone)
+        topBoss.simdPosition = SIMD3<Float>(0, 0.92, 0)
+        holder.addChildNode(topBoss)
+
+        let botCone = SCNCone(topRadius: 0.27, bottomRadius: 0.06, height: 0.42)
+        botCone.materials = [goldMat]
+        let botBoss = SCNNode(geometry: botCone)
+        botBoss.simdPosition = SIMD3<Float>(0, -0.92, 0)
+        holder.addChildNode(botBoss)
+
+        let capGeo = SCNSphere(radius: 0.065)
         capGeo.materials = [goldMat]
-        let topCap = SCNNode(geometry: capGeo)
-        topCap.simdPosition = SIMD3<Float>(0, 1.09, 0)
-        let botCap = SCNNode(geometry: capGeo)
-        botCap.simdPosition = SIMD3<Float>(0, -1.09, 0)
-        holder.addChildNode(topCap)
-        holder.addChildNode(botCap)
+        let topTip = SCNNode(geometry: capGeo)
+        topTip.simdPosition = SIMD3<Float>(0, 1.13, 0)
+        let botTip = SCNNode(geometry: capGeo)
+        botTip.simdPosition = SIMD3<Float>(0, -1.13, 0)
+        holder.addChildNode(topTip)
+        holder.addChildNode(botTip)
 
         switch axle {
         case .free24:
             break
         case .pin16:
-            // Local Y passes through 1 (+Y) and 6 (-Y)
             holder.simdEulerAngles = SIMD3<Float>(0, 0, 0)
         case .pin25:
-            // Rotate cylinder from Y onto Z -> passes through 2 (+Z) and 5 (-Z)
             holder.simdEulerAngles = SIMD3<Float>(.pi * 0.5, 0, 0)
         case .pin34:
-            // Rotate cylinder from Y onto X -> passes through 3 (+X) and 4 (-X)
             holder.simdEulerAngles = SIMD3<Float>(0, 0, .pi * 0.5)
         }
         return holder

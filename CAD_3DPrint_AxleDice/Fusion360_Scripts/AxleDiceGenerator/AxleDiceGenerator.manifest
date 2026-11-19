@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"Gravity Wizards / FD_too0 (Joe SmoLLey 3D Spatial Deck)",
+	"description":	{
+		"":	"Parametric Western RH000 Self-Righting AxLe Dice & Modular Skewer Kit Generator (18mm Support-Free 3D Printable)"
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

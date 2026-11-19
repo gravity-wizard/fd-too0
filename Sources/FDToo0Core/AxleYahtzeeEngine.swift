@@ -179,6 +179,26 @@ public struct YahtzeeDieSlot: Identifiable, Equatable, Sendable {
             return archetype.mappedFourNumber(forRawPip: orientation.top)
         }
     }
+
+    /// Real-world protruding pin-axle physics: if a 90° tip would stand the cube upright on its
+    /// protruding rounded pin cap, gravity immediately vaults it 90° further onto the flat opposite face!
+    public func settledOrientationAfterTip(_ direction: TumbleDirection) -> DieOrientation {
+        let first = orientation.tipped(direction)
+        if let pair = axleLock.pinnedPair, (first.top == pair.0 || first.top == pair.1) {
+            return first.tipped(direction)
+        }
+        return first
+    }
+
+    /// Real-world protruding pin-axle physics for a 120° corner-vertex spin: if East carries a
+    /// protruding pin cap, the cube cannot rest on that pin and rolls onto South (guaranteed flat!).
+    public func settledOrientationAfterCorner120() -> DieOrientation {
+        let first = orientation.spunCorner120()
+        if let pair = axleLock.pinnedPair, (first.top == pair.0 || first.top == pair.1) {
+            return first.spunCorner120()
+        }
+        return first
+    }
 }
 
 public enum AxleYahtzeeCategory: String, CaseIterable, Codable, Sendable, Identifiable {
@@ -469,8 +489,9 @@ public final class AxleYahtzeeEngine {
         return true
     }
 
-    /// 90° Cardinal Edge Tumble (`↑ North`, `↓ South`, `← West`, `→ East`) — NEVER blocked by axles!
-    /// If tipping tilts a pinned face onto Top/Bottom, the skewer naturally pops free!
+    /// 90° Cardinal Edge Tumble (`↑ North`, `↓ South`, `← West`, `→ East`).
+    /// Protruding pin-axles physically prevent landing with pinned numbers face-up/down:
+    /// tipping onto a rounded pin cap vaults cleanly over onto the next flat ring face!
     @discardableResult
     public func nudgeDie(dieIndex: Int, direction: TumbleDirection) -> Bool {
         guard probabilityMode == .mysteriousAxis,
@@ -478,21 +499,22 @@ public final class AxleYahtzeeEngine {
               tacticalNudgesRemaining > 0,
               rollsRemaining < 3 else { return false }
         tacticalNudgesRemaining -= 1
-        let nextOri = dice[dieIndex].orientation.tipped(direction)
-        dice[dieIndex].orientation = nextOri
+        let rawTip = dice[dieIndex].orientation.tipped(direction)
+        let settled = dice[dieIndex].settledOrientationAfterTip(direction)
+        let vaulted = (settled != rawTip)
+        dice[dieIndex].orientation = settled
 
-        var skewerNote = ""
-        if let pair = dice[dieIndex].axleLock.pinnedPair,
-           nextOri.top == pair.0 || nextOri.top == pair.1 {
-            dice[dieIndex].axleLock = .free24
-            skewerNote = " (tilted off skewer → Free 1–6)"
-        }
         let newVal = dice[dieIndex].effectiveValue(in: probabilityMode)
-        statusBanner = "90° Edge Tumble \(direction.arrowGlyph) on Die #\(dieIndex + 1) → Top is now \(newVal)\(skewerNote)!"
+        if vaulted {
+            statusBanner = "Vaulted over protruding \(dice[dieIndex].axleLock.shortTag) pin cap (\(rawTip.top) can't rest face-up) → landed flat on \(newVal)!"
+        } else {
+            statusBanner = "90° Edge Tumble \(direction.arrowGlyph) on Die #\(dieIndex + 1) → Top is now \(newVal)!"
+        }
         return true
     }
 
     /// 120° Corner-Vertex Spin (`◇`) around the front-upper-right `[East → Top → South]` diagonal!
+    /// If East has a protruding pin-axle, gravity rolls past the pin cap onto South!
     @discardableResult
     public func spinDieCorner120(dieIndex: Int) -> Bool {
         guard probabilityMode == .mysteriousAxis,
@@ -500,14 +522,17 @@ public final class AxleYahtzeeEngine {
               tacticalNudgesRemaining > 0,
               rollsRemaining < 3 else { return false }
         tacticalNudgesRemaining -= 1
-        let nextOri = dice[dieIndex].orientation.spunCorner120()
-        dice[dieIndex].orientation = nextOri
-        if let pair = dice[dieIndex].axleLock.pinnedPair,
-           nextOri.top == pair.0 || nextOri.top == pair.1 {
-            dice[dieIndex].axleLock = .free24
-        }
+        let rawSpin = dice[dieIndex].orientation.spunCorner120()
+        let settled = dice[dieIndex].settledOrientationAfterCorner120()
+        let vaulted = (settled != rawSpin)
+        dice[dieIndex].orientation = settled
+
         let newVal = dice[dieIndex].effectiveValue(in: probabilityMode)
-        statusBanner = "◇ 120° Corner-Vertex Spin on Die #\(dieIndex + 1) (East→Top→South) → Top is now \(newVal)!"
+        if vaulted {
+            statusBanner = "◇ Corner Spin rolled off protruding \(dice[dieIndex].axleLock.shortTag) pin → settled flat on \(newVal)!"
+        } else {
+            statusBanner = "◇ 120° Corner-Vertex Spin on Die #\(dieIndex + 1) (East→Top→South) → Top is now \(newVal)!"
+        }
         return true
     }
 
@@ -558,7 +583,8 @@ public final class AxleYahtzeeEngine {
                     let yaw = rng.nextInt(4)
                     dice[idx].orientation = .canonical(topPip: pip, yawSteps: yaw)
                 } else {
-                    // Spin around the chosen 4-face ring AND allow felt yaw so skewers aren't stuck in one pose!
+                    // Protruding pin-axles physically forbid resting on the 2 pinned faces:
+                    // lands uniformly on the 4 flat ring faces (25% each) across all horizontal yaws!
                     var o = Self.alignedInitialOrientation(for: ax, step: 0)
                     let quarterTurns = rng.nextInt(4)
                     for _ in 0..<quarterTurns {
@@ -675,15 +701,15 @@ public final class AxleYahtzeeEngine {
         var best: TacticalMoveCandidate? = nil
 
         for idx in dice.indices {
-            let orig = dice[idx].orientation
-            let fromVal = dice[idx].effectiveValue(in: probabilityMode)
+            let slot = dice[idx]
+            let fromVal = slot.effectiveValue(in: probabilityMode)
             let candidates: [(String, DieOrientation)] = [
-                ("↑ 90°", orig.tipped(.north)),
-                ("↓ 90°", orig.tipped(.south)),
-                ("← 90°", orig.tipped(.west)),
-                ("→ 90°", orig.tipped(.east)),
-                ("◇ 120° Corner", orig.spunCorner120()),
-                ("⟳ 180° Twist", orig.twisted180())
+                ("↑ 90°", slot.settledOrientationAfterTip(.north)),
+                ("↓ 90°", slot.settledOrientationAfterTip(.south)),
+                ("← 90°", slot.settledOrientationAfterTip(.west)),
+                ("→ 90°", slot.settledOrientationAfterTip(.east)),
+                ("◇ 120° Corner", slot.settledOrientationAfterCorner120()),
+                ("⟳ 180° Twist", slot.orientation.twisted180())
             ]
 
             for (label, candOri) in candidates {
