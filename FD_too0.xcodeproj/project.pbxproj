@@ -1,0 +1,355 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B831ED356D43BBEDA68C49DC /* AxleYahtzeeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E389C9A1F20604C5800B7F1B /* AxleYahtzeeEngine.swift */; };
+		2A03D432FCBD1FC90C9C082D /* DieOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B33D8A3E45A66B64BCCE750 /* DieOrientation.swift */; };
+		D5ED916E6CC4979773A20D12 /* FaceCardAndTwistedGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 905021DEDA6E862BF55CF6B6 /* FaceCardAndTwistedGeometry.swift */; };
+		E67164FC1ABB58E719FAD7B7 /* GameEngine23.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A14FF5D23DA09AEF4CEF45A /* GameEngine23.swift */; };
+		52326A34BC51487049720348 /* HolySmolleyPhysics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E59AF4A94349397EA86EDC /* HolySmolleyPhysics.swift */; };
+		1E256BB8128E63F8EEF87870 /* LevelSeedEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C85CF3D304AA514C8D689E /* LevelSeedEngine.swift */; };
+		31F5F8282C37FF3D6FD6B8A2 /* MoonBuggyDriftPhysics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D8180707C52487BB491C4B /* MoonBuggyDriftPhysics.swift */; };
+		43F1E21A433A6C70CE03DA11 /* PastelPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = D65F66FFEEA3A957FB90F1FF /* PastelPalette.swift */; };
+		BF0541CD31253A42D51990C0 /* AxleYahtzee3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335E4F914E4657FDB68E2CF5 /* AxleYahtzee3DView.swift */; };
+		568A511E85B20128B8A36333 /* BoardScene3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF36D84042E5DAFAFE9503 /* BoardScene3DView.swift */; };
+		5F8B4D1307FE8CA00E2FB56B /* BoardSpriteOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86A55712F529AAE0AE4ED32 /* BoardSpriteOverlay.swift */; };
+		6CE36329CA28EA1F8F9B692C /* DieTile3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1048F86A420E1CEC36303B88 /* DieTile3DView.swift */; };
+		17CF7F62AF8D82D56AABF989 /* FDToo0App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9BF99ECAE2BFBFFDF6F9E9 /* FDToo0App.swift */; };
+		99C1A60D104674A01A35F918 /* FDToo0RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063689575968BB1109585755 /* FDToo0RootView.swift */; };
+		5512428EAA5CD990C8CCFCF5 /* HolySmolley3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBDF2B81E4C01C8569E6A31 /* HolySmolley3DView.swift */; };
+		48BEB9B8925AE22BADD8DB90 /* MoonBuggy3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067DB65F99777F0BF9D09B9D /* MoonBuggy3DView.swift */; };
+		2D0142167D373B00BADA7C33 /* SceneKitDieBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56828387B9264D43A93249A /* SceneKitDieBuilder.swift */; };
+		254E7B1907C25D212F72DA0F /* TactileAudioHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C5D275A206AA46495577CF /* TactileAudioHaptics.swift */; };
+		FD6770571654C1B4C6E84A89 /* WorldAtlasSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0632B71DA6609D68C8592E18 /* WorldAtlasSheet.swift */; };
+		BBCC8BE1B02AFCFC8B171B05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C744E4FCB28E679F505FC411 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		E389C9A1F20604C5800B7F1B /* AxleYahtzeeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AxleYahtzeeEngine.swift; sourceTree = "<group>"; };
+		6B33D8A3E45A66B64BCCE750 /* DieOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DieOrientation.swift; sourceTree = "<group>"; };
+		905021DEDA6E862BF55CF6B6 /* FaceCardAndTwistedGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceCardAndTwistedGeometry.swift; sourceTree = "<group>"; };
+		7A14FF5D23DA09AEF4CEF45A /* GameEngine23.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine23.swift; sourceTree = "<group>"; };
+		24E59AF4A94349397EA86EDC /* HolySmolleyPhysics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HolySmolleyPhysics.swift; sourceTree = "<group>"; };
+		E8C85CF3D304AA514C8D689E /* LevelSeedEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelSeedEngine.swift; sourceTree = "<group>"; };
+		19D8180707C52487BB491C4B /* MoonBuggyDriftPhysics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonBuggyDriftPhysics.swift; sourceTree = "<group>"; };
+		D65F66FFEEA3A957FB90F1FF /* PastelPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PastelPalette.swift; sourceTree = "<group>"; };
+		335E4F914E4657FDB68E2CF5 /* AxleYahtzee3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AxleYahtzee3DView.swift; sourceTree = "<group>"; };
+		B3BF36D84042E5DAFAFE9503 /* BoardScene3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene3DView.swift; sourceTree = "<group>"; };
+		A86A55712F529AAE0AE4ED32 /* BoardSpriteOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSpriteOverlay.swift; sourceTree = "<group>"; };
+		1048F86A420E1CEC36303B88 /* DieTile3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DieTile3DView.swift; sourceTree = "<group>"; };
+		3E9BF99ECAE2BFBFFDF6F9E9 /* FDToo0App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FDToo0App.swift; sourceTree = "<group>"; };
+		063689575968BB1109585755 /* FDToo0RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FDToo0RootView.swift; sourceTree = "<group>"; };
+		4BBDF2B81E4C01C8569E6A31 /* HolySmolley3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HolySmolley3DView.swift; sourceTree = "<group>"; };
+		067DB65F99777F0BF9D09B9D /* MoonBuggy3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonBuggy3DView.swift; sourceTree = "<group>"; };
+		D56828387B9264D43A93249A /* SceneKitDieBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneKitDieBuilder.swift; sourceTree = "<group>"; };
+		41C5D275A206AA46495577CF /* TactileAudioHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TactileAudioHaptics.swift; sourceTree = "<group>"; };
+		0632B71DA6609D68C8592E18 /* WorldAtlasSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldAtlasSheet.swift; sourceTree = "<group>"; };
+		C744E4FCB28E679F505FC411 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6F96661D55D05EBC66D123A3 /* FD_too0.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FD_too0.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D56C61169423D1A365C2F5E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		6E43681F9BCD33D0CD9F215F = {
+			isa = PBXGroup;
+			children = (
+				B395AE3B02E19126D72D6C37 /* Sources */,
+				A52A1A324BA73FBA8B3E7183 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B395AE3B02E19126D72D6C37 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				F2895D1428BBC0D9DA358D90 /* FDToo0Core */,
+				77D147E560DA60CE1F14CD92 /* FDToo0App */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		F2895D1428BBC0D9DA358D90 /* FDToo0Core */ = {
+			isa = PBXGroup;
+			children = (
+				E389C9A1F20604C5800B7F1B /* AxleYahtzeeEngine.swift */,
+				6B33D8A3E45A66B64BCCE750 /* DieOrientation.swift */,
+				905021DEDA6E862BF55CF6B6 /* FaceCardAndTwistedGeometry.swift */,
+				7A14FF5D23DA09AEF4CEF45A /* GameEngine23.swift */,
+				24E59AF4A94349397EA86EDC /* HolySmolleyPhysics.swift */,
+				E8C85CF3D304AA514C8D689E /* LevelSeedEngine.swift */,
+				19D8180707C52487BB491C4B /* MoonBuggyDriftPhysics.swift */,
+				D65F66FFEEA3A957FB90F1FF /* PastelPalette.swift */,
+			);
+			path = FDToo0Core;
+			sourceTree = "<group>";
+		};
+		77D147E560DA60CE1F14CD92 /* FDToo0App */ = {
+			isa = PBXGroup;
+			children = (
+				335E4F914E4657FDB68E2CF5 /* AxleYahtzee3DView.swift */,
+				B3BF36D84042E5DAFAFE9503 /* BoardScene3DView.swift */,
+				A86A55712F529AAE0AE4ED32 /* BoardSpriteOverlay.swift */,
+				1048F86A420E1CEC36303B88 /* DieTile3DView.swift */,
+				3E9BF99ECAE2BFBFFDF6F9E9 /* FDToo0App.swift */,
+				063689575968BB1109585755 /* FDToo0RootView.swift */,
+				4BBDF2B81E4C01C8569E6A31 /* HolySmolley3DView.swift */,
+				067DB65F99777F0BF9D09B9D /* MoonBuggy3DView.swift */,
+				D56828387B9264D43A93249A /* SceneKitDieBuilder.swift */,
+				41C5D275A206AA46495577CF /* TactileAudioHaptics.swift */,
+				0632B71DA6609D68C8592E18 /* WorldAtlasSheet.swift */,
+				21F0BDE3AC1422039B2249D8 /* Resources */,
+			);
+			path = FDToo0App;
+			sourceTree = "<group>";
+		};
+		21F0BDE3AC1422039B2249D8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C744E4FCB28E679F505FC411 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A52A1A324BA73FBA8B3E7183 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6F96661D55D05EBC66D123A3 /* FD_too0.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D76CAB21AEEDFEE11B51A95F /* FD_too0 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AC43AF62EF68B799B1FF7AEC /* Build configuration list for PBXNativeTarget "FD_too0" */;
+			buildPhases = (
+				54D0F195E07063EDDE2102D8 /* Sources */,
+				D56C61169423D1A365C2F5E3 /* Frameworks */,
+				C97F9486B3EF9A7C168DD2CC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FD_too0;
+			productName = FD_too0;
+			productReference = 6F96661D55D05EBC66D123A3 /* FD_too0.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2501B524625FBC70742BDCC4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					D76CAB21AEEDFEE11B51A95F = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 3DF022B0D3CAB78A4AC5C18B /* Build configuration list for PBXProject "FD_too0" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 6E43681F9BCD33D0CD9F215F;
+			productRefGroup = A52A1A324BA73FBA8B3E7183 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D76CAB21AEEDFEE11B51A95F /* FD_too0 */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C97F9486B3EF9A7C168DD2CC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBCC8BE1B02AFCFC8B171B05 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		54D0F195E07063EDDE2102D8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B831ED356D43BBEDA68C49DC /* AxleYahtzeeEngine.swift in Sources */,
+				2A03D432FCBD1FC90C9C082D /* DieOrientation.swift in Sources */,
+				D5ED916E6CC4979773A20D12 /* FaceCardAndTwistedGeometry.swift in Sources */,
+				E67164FC1ABB58E719FAD7B7 /* GameEngine23.swift in Sources */,
+				52326A34BC51487049720348 /* HolySmolleyPhysics.swift in Sources */,
+				1E256BB8128E63F8EEF87870 /* LevelSeedEngine.swift in Sources */,
+				31F5F8282C37FF3D6FD6B8A2 /* MoonBuggyDriftPhysics.swift in Sources */,
+				43F1E21A433A6C70CE03DA11 /* PastelPalette.swift in Sources */,
+				BF0541CD31253A42D51990C0 /* AxleYahtzee3DView.swift in Sources */,
+				568A511E85B20128B8A36333 /* BoardScene3DView.swift in Sources */,
+				5F8B4D1307FE8CA00E2FB56B /* BoardSpriteOverlay.swift in Sources */,
+				6CE36329CA28EA1F8F9B692C /* DieTile3DView.swift in Sources */,
+				17CF7F62AF8D82D56AABF989 /* FDToo0App.swift in Sources */,
+				99C1A60D104674A01A35F918 /* FDToo0RootView.swift in Sources */,
+				5512428EAA5CD990C8CCFCF5 /* HolySmolley3DView.swift in Sources */,
+				48BEB9B8925AE22BADD8DB90 /* MoonBuggy3DView.swift in Sources */,
+				2D0142167D373B00BADA7C33 /* SceneKitDieBuilder.swift in Sources */,
+				254E7B1907C25D212F72DA0F /* TactileAudioHaptics.swift in Sources */,
+				FD6770571654C1B4C6E84A89 /* WorldAtlasSheet.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B5EEB94CDF34BBDF966B4069 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = auto;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		6C6E88927FD516DF247228DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = auto;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		3CD8792F6F2C884C8E3B3724 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 23;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FD_too0;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gravitywizards.fdtoo0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8FA320B02753BBC3F066ED1D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 23;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FD_too0;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gravitywizards.fdtoo0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3DF022B0D3CAB78A4AC5C18B /* Build configuration list for PBXProject "FD_too0" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5EEB94CDF34BBDF966B4069 /* Debug */,
+				6C6E88927FD516DF247228DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AC43AF62EF68B799B1FF7AEC /* Build configuration list for PBXNativeTarget "FD_too0" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3CD8792F6F2C884C8E3B3724 /* Debug */,
+				8FA320B02753BBC3F066ED1D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2501B524625FBC70742BDCC4 /* Project object */;
+}

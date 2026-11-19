@@ -11,7 +11,9 @@ import SwiftUI
 import Combine
 import SceneKit
 import simd
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 @MainActor
 public final class MoonBuggy3DSceneCoordinator: ObservableObject {

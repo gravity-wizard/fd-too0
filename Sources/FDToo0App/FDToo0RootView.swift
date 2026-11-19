@@ -12,7 +12,9 @@
 import SwiftUI
 import Combine
 import SpriteKit
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 public struct FDToo0RootView: View {
     @State private var activeDeck: SpatialDeckTab = .flippingDice3D

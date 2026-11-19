@@ -7,7 +7,9 @@
 //
 
 import SwiftUI
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 public struct DieTile3DView: View {
     public let die: BoardDie

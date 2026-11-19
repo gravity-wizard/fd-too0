@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 public struct WorldAtlasSheet: View {
     @Bindable var engine: GameEngine23

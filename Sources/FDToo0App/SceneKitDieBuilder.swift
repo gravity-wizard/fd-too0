@@ -15,7 +15,9 @@ import SceneKit
 import CoreGraphics
 import CoreText
 import simd
+#if canImport(FDToo0Core)
 import FDToo0Core
+#endif
 
 #if os(macOS)
 import AppKit

@@ -11,13 +11,13 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(
-            name: "FDToo0Core",
-            targets: ["FDToo0Core"]
-        ),
         .executable(
             name: "FDToo0App",
             targets: ["FDToo0App"]
+        ),
+        .library(
+            name: "FDToo0Core",
+            targets: ["FDToo0Core"]
         )
     ],
     targets: [
