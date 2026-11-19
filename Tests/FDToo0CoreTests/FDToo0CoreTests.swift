@@ -208,6 +208,44 @@ final class FDToo0CoreTests: XCTestCase {
         XCTAssertEqual(pts, 50)
     }
 
+    func testRegularYahtzeeCorner120SpinTutorialAndBotOpponents() {
+        // 1. Verify 120° Corner-Vertex Spin is an exact order-3 SO(3) bijection across all 24 states!
+        let all24 = Set(DieOrientation.all24Orientations)
+        var spunSet = Set<DieOrientation>()
+        for o in all24 {
+            let c1 = o.spunCorner120()
+            let c2 = c1.spunCorner120()
+            let c3 = c2.spunCorner120()
+            XCTAssertTrue(c1.hasValidSumSevenInvariant)
+            XCTAssertEqual(c1.top, o.east)
+            XCTAssertEqual(c2.top, o.south)
+            XCTAssertEqual(c3, o)
+            spunSet.insert(c1)
+        }
+        XCTAssertEqual(spunSet, all24)
+
+        // 2. Verify ReguLar 1–6 Yahtzee has all 13 classic categories & Trio Bots play alongside player
+        let engine = AxleYahtzeeEngine()
+        engine.probabilityMode = .regularStandard
+        engine.opponentMode = .parlourTrio
+        XCTAssertEqual(engine.activeCategories.count, 13)
+        XCTAssertEqual(engine.bots.count, 2)
+        XCTAssertTrue(engine.rollUnheldDice())
+        XCTAssertFalse(engine.coachPrompt.isEmpty)
+        XCTAssertTrue(engine.commitScore(in: .chanceSum))
+        XCTAssertEqual(engine.bots[0].lockedScores.count, 1)
+        XCTAssertEqual(engine.bots[1].lockedScores.count, 1)
+
+        // 3. Verify AxLe 3D supports Corner 120° Spin, 180° Twist, and 5-Step Tutorial
+        engine.probabilityMode = .mysteriousAxis
+        engine.startTutorial()
+        XCTAssertTrue(engine.isTutorialActive)
+        XCTAssertTrue(engine.rollUnheldDice())
+        let eastBefore = engine.dice[0].orientation.east
+        XCTAssertTrue(engine.spinDieCorner120(dieIndex: 0))
+        XCTAssertEqual(engine.dice[0].orientation.top, eastBefore)
+    }
+
     func testHolySmolleyPREMTransitCoriolisAndOTECSurplus() {
         let uniformEarth = HolySmolleySimulator.simulateTransit(model: .earthUniformChord, chordDepthFraction: 1.0, vacuumPressurePa: 0.01)
         let premEarth = HolySmolleySimulator.simulateTransit(model: .earthPolarPREM, chordDepthFraction: 1.0, vacuumPressurePa: 0.01)

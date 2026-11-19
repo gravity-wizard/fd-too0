@@ -177,6 +177,18 @@ public struct DieOrientation: Equatable, Hashable, Codable, Sendable {
         return DieOrientation(top: top, north: 7 - east, east: north)
     }
 
+    /// 120-degree corner-vertex rotation around the front-upper-right `[East, Top, South]` body diagonal!
+    /// Cycles the 3 camera-visible faces (`East → Top → South → East`) — proving 3D dice rotate around
+    /// corner diagonals as well as face axles (`spunCorner120()^3 == identity`).
+    public func spunCorner120() -> DieOrientation {
+        return DieOrientation(top: east, north: 7 - top, east: 7 - north)
+    }
+
+    /// Inverse 240-degree (`-120°`) corner-vertex rotation (`South → Top → East → South`).
+    public func spunCorner240() -> DieOrientation {
+        return spunCorner120().spunCorner120()
+    }
+
     /// Preview what pip will land on Top if the player swipes in `direction`.
     public func nextTopPip(whenTipped direction: TumbleDirection) -> Int {
         tipped(direction).top
